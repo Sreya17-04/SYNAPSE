@@ -7,7 +7,8 @@
 // BACKEND API
 // =====================================================
 
-const API_URL = "http://localhost:5000/api/posts";
+const API_URL =
+    "http://localhost:5000/api/posts";
 
 
 // =====================================================
@@ -49,45 +50,6 @@ const themeIcon =
 
 
 // =====================================================
-// THEME (LIGHT / DARK MODE)
-// =====================================================
-
-function initTheme() {
-    const savedTheme = localStorage.getItem("theme");
-    const systemPrefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-
-    if (savedTheme === "dark" || (!savedTheme && systemPrefersDark)) {
-        setTheme("dark");
-    } else {
-        setTheme("light");
-    }
-}
-
-function setTheme(theme) {
-    if (theme === "dark") {
-        document.body.classList.add("dark-mode");
-        if (themeIcon) themeIcon.textContent = "☀️";
-        if (themeToggleBtn) themeToggleBtn.setAttribute("title", "Switch to Light Mode");
-        localStorage.setItem("theme", "dark");
-    } else {
-        document.body.classList.remove("dark-mode");
-        if (themeIcon) themeIcon.textContent = "🌙";
-        if (themeToggleBtn) themeToggleBtn.setAttribute("title", "Switch to Dark Mode");
-        localStorage.setItem("theme", "light");
-    }
-}
-
-if (themeToggleBtn) {
-    themeToggleBtn.addEventListener("click", () => {
-        const isDark = document.body.classList.contains("dark-mode");
-        setTheme(isDark ? "light" : "dark");
-    });
-}
-
-initTheme();
-
-
-// =====================================================
 // APPLICATION DATA
 // =====================================================
 
@@ -97,7 +59,131 @@ let selectedCategory = "All";
 
 
 // =====================================================
-// LOAD POSTS
+// THEME - LIGHT / DARK MODE
+// =====================================================
+
+function initTheme() {
+
+    const savedTheme =
+        localStorage.getItem("theme");
+
+    const systemPrefersDark =
+        window.matchMedia(
+            "(prefers-color-scheme: dark)"
+        ).matches;
+
+
+    if (
+        savedTheme === "dark" ||
+        (!savedTheme && systemPrefersDark)
+    ) {
+
+        setTheme("dark");
+
+    } else {
+
+        setTheme("light");
+
+    }
+
+}
+
+
+function setTheme(theme) {
+
+    if (theme === "dark") {
+
+        document.body.classList.add(
+            "dark-mode"
+        );
+
+
+        if (themeIcon) {
+
+            themeIcon.textContent = "☀️";
+
+        }
+
+
+        if (themeToggleBtn) {
+
+            themeToggleBtn.setAttribute(
+                "title",
+                "Switch to Light Mode"
+            );
+
+        }
+
+
+        localStorage.setItem(
+            "theme",
+            "dark"
+        );
+
+
+    } else {
+
+        document.body.classList.remove(
+            "dark-mode"
+        );
+
+
+        if (themeIcon) {
+
+            themeIcon.textContent = "🌙";
+
+        }
+
+
+        if (themeToggleBtn) {
+
+            themeToggleBtn.setAttribute(
+                "title",
+                "Switch to Dark Mode"
+            );
+
+        }
+
+
+        localStorage.setItem(
+            "theme",
+            "light"
+        );
+
+    }
+
+}
+
+
+if (themeToggleBtn) {
+
+    themeToggleBtn.addEventListener(
+        "click",
+        function () {
+
+            const isDark =
+                document.body.classList.contains(
+                    "dark-mode"
+                );
+
+
+            setTheme(
+                isDark
+                    ? "light"
+                    : "dark"
+            );
+
+        }
+    );
+
+}
+
+
+initTheme();
+
+
+// =====================================================
+// LOAD POSTS FROM BACKEND
 // =====================================================
 
 async function loadPosts() {
@@ -105,9 +191,13 @@ async function loadPosts() {
     try {
 
         postsContainer.innerHTML = `
+
             <div class="loading">
+
                 Loading posts...
+
             </div>
+
         `;
 
 
@@ -146,6 +236,7 @@ async function loadPosts() {
 
 
         postsContainer.innerHTML = `
+
             <div class="error-message">
 
                 <h3>
@@ -153,10 +244,12 @@ async function loadPosts() {
                 </h3>
 
                 <p>
-                    Make sure the backend server is running.
+                    Make sure the backend server
+                    is running.
                 </p>
 
             </div>
+
         `;
 
     }
@@ -170,27 +263,36 @@ async function loadPosts() {
 
 function displayPosts() {
 
-    let posts = [...allPosts];
+    let posts =
+        [...allPosts];
 
 
-    // -------------------------------------------------
+    // =================================================
     // CATEGORY FILTER
-    // -------------------------------------------------
+    // =================================================
 
-    if (selectedCategory !== "All") {
+    if (
+        selectedCategory !== "All"
+    ) {
 
-        posts = posts.filter(function (post) {
+        posts =
+            posts.filter(
+                function (post) {
 
-            return post.category === selectedCategory;
+                    return (
+                        post.category ===
+                        selectedCategory
+                    );
 
-        });
+                }
+            );
 
     }
 
 
-    // -------------------------------------------------
+    // =================================================
     // SEARCH FILTER
-    // -------------------------------------------------
+    // =================================================
 
     const searchText =
         searchInput.value
@@ -200,55 +302,108 @@ function displayPosts() {
 
     if (searchText !== "") {
 
-        posts = posts.filter(function (post) {
+        posts =
+            posts.filter(
+                function (post) {
 
-            const title =
-                String(post.title || "")
-                    .toLowerCase();
-
-            const content =
-                String(post.content || "")
-                    .toLowerCase();
-
-            const author =
-                String(post.author || "")
-                    .toLowerCase();
-
-            const category =
-                String(post.category || "")
-                    .toLowerCase();
+                    const title =
+                        String(
+                            post.title || ""
+                        ).toLowerCase();
 
 
-            return (
-                title.includes(searchText) ||
-                content.includes(searchText) ||
-                author.includes(searchText) ||
-                category.includes(searchText)
+                    const content =
+                        String(
+                            post.content || ""
+                        ).toLowerCase();
+
+
+                    const author =
+                        String(
+                            post.author || ""
+                        ).toLowerCase();
+
+
+                    const category =
+                        String(
+                            post.category || ""
+                        ).toLowerCase();
+
+
+                    return (
+
+                        title.includes(
+                            searchText
+                        )
+
+                        ||
+
+                        content.includes(
+                            searchText
+                        )
+
+                        ||
+
+                        author.includes(
+                            searchText
+                        )
+
+                        ||
+
+                        category.includes(
+                            searchText
+                        )
+
+                    );
+
+                }
             );
 
-        });
-
     }
 
 
-    // -------------------------------------------------
+    // =================================================
     // SORT
-    // -------------------------------------------------
+    // =================================================
 
-    if (sortSelect.value === "latest") {
+    posts.sort(
+        function (a, b) {
 
-        posts.reverse();
+            const dateA =
+                new Date(
+                    a.createdAt || 0
+                );
 
-    }
+            const dateB =
+                new Date(
+                    b.createdAt || 0
+                );
 
 
-    // -------------------------------------------------
+            if (
+                sortSelect.value ===
+                "latest"
+            ) {
+
+                return dateB - dateA;
+
+            }
+
+
+            return dateA - dateB;
+
+        }
+    );
+
+
+    // =================================================
     // NO POSTS
-    // -------------------------------------------------
+    // =================================================
 
     if (posts.length === 0) {
 
         postsContainer.innerHTML = `
+
             <div class="no-posts">
 
                 <div style="font-size: 40px;">
@@ -260,10 +415,12 @@ function displayPosts() {
                 </h3>
 
                 <p>
-                    Try changing your search or category.
+                    Try changing your search
+                    or category.
                 </p>
 
             </div>
+
         `;
 
         return;
@@ -271,227 +428,471 @@ function displayPosts() {
     }
 
 
-    // -------------------------------------------------
+    // =================================================
     // CLEAR CONTAINER
-    // -------------------------------------------------
+    // =================================================
 
     postsContainer.innerHTML = "";
 
 
-    // -------------------------------------------------
+    // =================================================
     // CREATE POST CARDS
-    // -------------------------------------------------
+    // =================================================
 
-    posts.forEach(function (post) {
+    posts.forEach(
+        function (post) {
 
-        const postCard =
-            document.createElement("article");
-
-
-        postCard.className =
-            "post-card";
-
-
-        // -------------------------------------------------
-        // DATE
-        // -------------------------------------------------
-
-        let dateText = "";
-
-
-        if (post.createdAt) {
-
-            const date =
-                new Date(post.createdAt);
-
-
-            dateText =
-                date.toLocaleDateString(
-                    "en-IN",
-                    {
-                        day: "numeric",
-                        month: "short",
-                        year: "numeric"
-                    }
+            const postCard =
+                document.createElement(
+                    "article"
                 );
 
-        }
+
+            postCard.className =
+                "post-card";
 
 
-        // -------------------------------------------------
-        // POST HTML
-        // -------------------------------------------------
+            // =========================================
+            // DATE
+            // =========================================
 
-        postCard.innerHTML = `
-
-            <div class="post-card-header">
-
-                <span class="post-category">
-
-                    ${getCategoryIcon(post.category)}
-
-                    ${escapeHTML(post.category)}
-
-                </span>
+            let dateText = "";
 
 
-                <span class="post-date">
+            if (post.createdAt) {
 
-                    ${dateText}
-
-                </span>
-
-            </div>
-
-
-            <h3>
-
-                ${escapeHTML(post.title)}
-
-            </h3>
+                const date =
+                    new Date(
+                        post.createdAt
+                    );
 
 
-            <p class="post-content">
+                dateText =
+                    date.toLocaleDateString(
+                        "en-IN",
+                        {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric"
+                        }
+                    );
 
-                ${escapeHTML(post.content)}
-
-            </p>
-
-
-            <div class="post-footer">
-
-
-                <div class="post-author">
-
-
-                    <div class="author-avatar">
-
-                        ${getInitials(post.author)}
-
-                    </div>
-
-
-                    <div>
-
-                        <strong>
-
-                            ${escapeHTML(post.author)}
-
-                        </strong>
-
-
-                        ${dateText
-                ? `
-                                    <small>
-                                        ${dateText}
-                                    </small>
-                                  `
-                : ""
             }
 
-                    </div>
 
+            // =========================================
+            // POST HTML
+            // =========================================
+
+            postCard.innerHTML = `
+
+                <div class="post-card-header">
+
+                    <span class="post-category">
+
+                        ${getCategoryIcon(
+                post.category
+            )}
+
+                        ${escapeHTML(
+                post.category
+            )}
+
+                    </span>
+
+
+                    <span class="post-date">
+
+                        ${dateText}
+
+                    </span>
 
                 </div>
 
 
-                <div class="post-actions">
+                <h3>
+
+                    ${escapeHTML(
+                post.title
+            )}
+
+                </h3>
 
 
-                    <button
-                        class="post-action like-btn"
-                        type="button"
-                    >
-                        👍 Like
-                    </button>
+                <p class="post-content">
+
+                    ${escapeHTML(
+                post.content
+            )}
+
+                </p>
 
 
-                    <button
-                        class="post-action comment-btn"
-                        type="button"
-                    >
-                        💬 Comment
-                    </button>
+                <div class="post-footer">
 
 
-                </div>
+                    <div class="post-author">
 
 
-            </div>
+                        <div class="author-avatar">
 
-        `;
+                            ${getInitials(
+                post.author
+            )}
 
-
-        // -------------------------------------------------
-        // LIKE BUTTON
-        // -------------------------------------------------
-
-        const likeButton =
-            postCard.querySelector(
-                ".like-btn"
-            );
+                        </div>
 
 
-        likeButton.addEventListener(
-            "click",
-            function () {
+                        <div>
 
-                likeButton.classList.toggle(
-                    "liked"
-                );
+                            <strong>
+
+                                ${escapeHTML(
+                post.author
+            )}
+
+                            </strong>
 
 
-                if (
-                    likeButton.classList.contains(
-                        "liked"
-                    )
-                ) {
-
-                    likeButton.textContent =
-                        "❤️ Liked";
-
-                } else {
-
-                    likeButton.textContent =
-                        "👍 Like";
-
+                            ${dateText
+                    ? `
+                                        <small>
+                                            ${dateText}
+                                        </small>
+                                    `
+                    : ""
                 }
 
-            }
-        );
+                        </div>
 
 
-        // -------------------------------------------------
-        // COMMENT BUTTON
-        // -------------------------------------------------
+                    </div>
 
-        const commentButton =
-            postCard.querySelector(
-                ".comment-btn"
+
+                    <div class="post-actions">
+
+
+                        <button
+                            class="post-action like-btn"
+                            type="button"
+                        >
+
+                            👍 Like
+
+                        </button>
+
+
+                        <button
+                            class="post-action comment-btn"
+                            type="button"
+                        >
+
+                            💬 Comment
+
+                        </button>
+
+
+                    </div>
+
+
+                </div>
+
+            `;
+
+
+            // =========================================
+            // LIKE BUTTON
+            // =========================================
+
+            const likeButton =
+                postCard.querySelector(
+                    ".like-btn"
+                );
+
+
+            likeButton.addEventListener(
+                "click",
+                function () {
+
+                    likeButton.classList.toggle(
+                        "liked"
+                    );
+
+
+                    if (
+                        likeButton.classList.contains(
+                            "liked"
+                        )
+                    ) {
+
+                        likeButton.textContent =
+                            "❤️ Liked";
+
+                    } else {
+
+                        likeButton.textContent =
+                            "👍 Like";
+
+                    }
+
+                }
             );
 
 
-        commentButton.addEventListener(
-            "click",
-            function () {
+            // =========================================
+            // COMMENT BUTTON
+            // =========================================
 
-                alert(
-                    "Comment feature will be added soon."
+            const commentButton =
+                postCard.querySelector(
+                    ".comment-btn"
                 );
 
-            }
-        );
+
+            commentButton.addEventListener(
+                "click",
+                function () {
+
+                    let commentSection =
+                        postCard.querySelector(
+                            ".comment-section"
+                        );
 
 
-        // -------------------------------------------------
-        // ADD CARD
-        // -------------------------------------------------
+                    // ---------------------------------
+                    // CREATE COMMENT SECTION
+                    // ---------------------------------
 
-        postsContainer.appendChild(
-            postCard
-        );
+                    if (!commentSection) {
 
-    });
+                        commentSection =
+                            document.createElement(
+                                "div"
+                            );
+
+
+                        commentSection.className =
+                            "comment-section";
+
+
+                        commentSection.innerHTML = `
+
+                            <div class="comment-list">
+
+                                <p class="no-comments">
+
+                                    No comments yet.
+                                    Be the first to comment!
+
+                                </p>
+
+                            </div>
+
+
+                            <div class="comment-form">
+
+                                <input
+                                    type="text"
+                                    class="comment-input"
+                                    placeholder="Write a comment..."
+                                >
+
+
+                                <button
+                                    type="button"
+                                    class="comment-submit"
+                                >
+
+                                    Comment
+
+                                </button>
+
+                            </div>
+
+                        `;
+
+
+                        postCard.appendChild(
+                            commentSection
+                        );
+
+
+                        // =============================
+                        // COMMENT ELEMENTS
+                        // =============================
+
+                        const commentInput =
+                            commentSection.querySelector(
+                                ".comment-input"
+                            );
+
+
+                        const commentSubmit =
+                            commentSection.querySelector(
+                                ".comment-submit"
+                            );
+
+
+                        const commentList =
+                            commentSection.querySelector(
+                                ".comment-list"
+                            );
+
+
+                        // =============================
+                        // SUBMIT COMMENT
+                        // =============================
+
+                        commentSubmit.addEventListener(
+                            "click",
+                            function () {
+
+                                const commentText =
+                                    commentInput.value
+                                        .trim();
+
+
+                                if (
+                                    !commentText
+                                ) {
+
+                                    alert(
+                                        "Please enter a comment."
+                                    );
+
+                                    return;
+
+                                }
+
+
+                                // Remove empty message
+                                const noComments =
+                                    commentList.querySelector(
+                                        ".no-comments"
+                                    );
+
+
+                                if (noComments) {
+
+                                    noComments.remove();
+
+                                }
+
+
+                                // Create comment
+                                const comment =
+                                    document.createElement(
+                                        "div"
+                                    );
+
+
+                                comment.className =
+                                    "comment-item";
+
+
+                                comment.innerHTML = `
+
+                                    <div class="comment-avatar">
+
+                                        👤
+
+                                    </div>
+
+
+                                    <div class="comment-body">
+
+                                        <strong>
+                                            You
+                                        </strong>
+
+                                        <p>
+                                            ${escapeHTML(
+                                    commentText
+                                )}
+                                        </p>
+
+                                    </div>
+
+                                `;
+
+
+                                commentList.appendChild(
+                                    comment
+                                );
+
+
+                                // Clear input
+                                commentInput.value =
+                                    "";
+
+                            }
+                        );
+
+
+                        // =============================
+                        // ENTER KEY
+                        // =============================
+
+                        commentInput.addEventListener(
+                            "keydown",
+                            function (event) {
+
+                                if (
+                                    event.key ===
+                                    "Enter"
+                                ) {
+
+                                    event.preventDefault();
+
+                                    commentSubmit.click();
+
+                                }
+
+                            }
+                        );
+
+
+                        // Focus input
+                        commentInput.focus();
+
+
+                    } else {
+
+                        // =============================
+                        // TOGGLE COMMENT SECTION
+                        // =============================
+
+                        if (
+                            commentSection.style.display ===
+                            "none"
+                        ) {
+
+                            commentSection.style.display =
+                                "block";
+
+                        } else {
+
+                            commentSection.style.display =
+                                "none";
+
+                        }
+
+                    }
+
+                }
+            );
+
+
+            // =========================================
+            // ADD CARD TO DOM
+            // =========================================
+
+            postsContainer.appendChild(
+                postCard
+            );
+
+        }
+    );
 
 }
 
@@ -507,9 +908,9 @@ postForm.addEventListener(
         event.preventDefault();
 
 
-        // -------------------------------------------------
+        // =============================================
         // GET FORM VALUES
-        // -------------------------------------------------
+        // =============================================
 
         const title =
             document
@@ -538,9 +939,9 @@ postForm.addEventListener(
                 .trim();
 
 
-        // -------------------------------------------------
+        // =============================================
         // VALIDATION
-        // -------------------------------------------------
+        // =============================================
 
         if (
             !title ||
@@ -558,9 +959,9 @@ postForm.addEventListener(
         }
 
 
-        // -------------------------------------------------
+        // =============================================
         // NEW POST OBJECT
-        // -------------------------------------------------
+        // =============================================
 
         const newPost = {
 
@@ -591,9 +992,9 @@ postForm.addEventListener(
                 "Publishing...";
 
 
-            // -------------------------------------------------
-            // SEND TO BACKEND
-            // -------------------------------------------------
+            // =========================================
+            // SEND POST TO BACKEND
+            // =========================================
 
             const response =
                 await fetch(
@@ -623,9 +1024,9 @@ postForm.addEventListener(
             }
 
 
-            // -------------------------------------------------
+            // =========================================
             // GET CREATED POST
-            // -------------------------------------------------
+            // =========================================
 
             const createdPost =
                 await response.json();
@@ -637,32 +1038,32 @@ postForm.addEventListener(
             );
 
 
-            // -------------------------------------------------
-            // ADD TO POSTS
-            // -------------------------------------------------
+            // =========================================
+            // ADD TO LOCAL DATA
+            // =========================================
 
             allPosts.push(
                 createdPost
             );
 
 
-            // -------------------------------------------------
+            // =========================================
             // RESET FORM
-            // -------------------------------------------------
+            // =========================================
 
             postForm.reset();
 
 
-            // -------------------------------------------------
+            // =========================================
             // CLOSE MODAL
-            // -------------------------------------------------
+            // =========================================
 
             closeModal();
 
 
-            // -------------------------------------------------
-            // DISPLAY UPDATED POSTS
-            // -------------------------------------------------
+            // =========================================
+            // REFRESH POSTS
+            // =========================================
 
             displayPosts();
 
@@ -707,7 +1108,7 @@ postForm.addEventListener(
 
 
 // =====================================================
-// OPEN MODAL
+// OPEN CREATE POST MODAL
 // =====================================================
 
 createPostBtn.addEventListener(
@@ -717,6 +1118,10 @@ createPostBtn.addEventListener(
         postModal.classList.add(
             "show"
         );
+
+        document
+            .getElementById("title")
+            .focus();
 
     }
 );
@@ -772,7 +1177,8 @@ postModal.addEventListener(
     function (event) {
 
         if (
-            event.target === postModal
+            event.target ===
+            postModal
         ) {
 
             closeModal();
@@ -792,7 +1198,8 @@ document.addEventListener(
     function (event) {
 
         if (
-            event.key === "Escape"
+            event.key ===
+            "Escape"
         ) {
 
             closeModal();
@@ -813,7 +1220,6 @@ categoryButtons.forEach(
         button.addEventListener(
             "click",
             function () {
-
 
                 // Remove active
                 categoryButtons.forEach(
@@ -838,7 +1244,7 @@ categoryButtons.forEach(
                     button.dataset.category;
 
 
-                // Display
+                // Display filtered posts
                 displayPosts();
 
             }
@@ -882,32 +1288,58 @@ sortSelect.addEventListener(
 
 function getCategoryIcon(category) {
 
-    if (category === "Academic") {
+    if (
+        category ===
+        "Academic"
+    ) {
+
         return "📚";
+
     }
 
 
-    if (category === "Placement") {
+    if (
+        category ===
+        "Placement"
+    ) {
+
         return "💼";
+
     }
 
 
-    if (category === "Events") {
+    if (
+        category ===
+        "Events"
+    ) {
+
         return "📢";
+
     }
 
 
-    if (category === "General") {
+    if (
+        category ===
+        "General"
+    ) {
+
         return "💬";
+
     }
 
 
-    if (category === "Other") {
+    if (
+        category ===
+        "Other"
+    ) {
+
         return "📌";
+
     }
 
 
     return "📝";
+
 }
 
 
@@ -930,7 +1362,9 @@ function getInitials(name) {
             .split(/\s+/);
 
 
-    if (words.length === 1) {
+    if (
+        words.length === 1
+    ) {
 
         return words[0]
             .substring(0, 2)
@@ -940,15 +1374,20 @@ function getInitials(name) {
 
 
     return (
+
         words[0].charAt(0) +
-        words[words.length - 1].charAt(0)
+
+        words[
+            words.length - 1
+        ].charAt(0)
+
     ).toUpperCase();
 
 }
 
 
 // =====================================================
-// SECURITY
+// SECURITY - ESCAPE HTML
 // =====================================================
 
 function escapeHTML(text) {
@@ -964,10 +1403,13 @@ function escapeHTML(text) {
 
 
     const div =
-        document.createElement("div");
+        document.createElement(
+            "div"
+        );
 
 
-    div.textContent = text;
+    div.textContent =
+        text;
 
 
     return div.innerHTML;

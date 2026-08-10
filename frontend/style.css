@@ -1,5 +1,5 @@
 /* =====================================================
-   RESET
+RESET
 ===================================================== */
 
 * {
@@ -10,18 +10,19 @@
 
 
 /* =====================================================
-   BODY
+BODY
 ===================================================== */
 
 body {
     font-family: Arial, Helvetica, sans-serif;
     background: #f6f7fb;
     color: #1f2937;
+    transition: background 0.3s, color 0.3s;
 }
 
 
 /* =====================================================
-   NAVBAR
+NAVBAR
 ===================================================== */
 
 .navbar {
@@ -137,7 +138,7 @@ body {
 
 
 /* =====================================================
-   BUTTONS
+BUTTONS
 ===================================================== */
 
 button {
@@ -228,7 +229,10 @@ button {
 
     font-size: 18px;
 
-    transition: background 0.2s, border-color 0.2s, transform 0.2s;
+    transition:
+        background 0.2s,
+        border-color 0.2s,
+        transform 0.2s;
 }
 
 
@@ -240,7 +244,7 @@ button {
 
 
 /* =====================================================
-   PAGE
+PAGE
 ===================================================== */
 
 .page-container {
@@ -253,13 +257,14 @@ button {
 
 
 /* =====================================================
-   HERO
+HERO
 ===================================================== */
 
 .hero {
     margin-top: 15px;
 
-    background: linear-gradient(120deg,
+    background:
+        linear-gradient(120deg,
             #eef2ff,
             #f5f3ff);
 
@@ -324,7 +329,7 @@ button {
 
 
 /* =====================================================
-   CONTENT LAYOUT
+CONTENT LAYOUT
 ===================================================== */
 
 .content-layout {
@@ -342,7 +347,7 @@ button {
 
 
 /* =====================================================
-   LEFT SIDEBAR
+LEFT SIDEBAR
 ===================================================== */
 
 .sidebar-section {
@@ -406,30 +411,8 @@ button {
 }
 
 
-.community-stat {
-    display: flex;
-
-    gap: 8px;
-
-    align-items: center;
-}
-
-
-.community-stat strong,
-.community-stat small {
-    display: block;
-}
-
-
-.community-stat small {
-    color: #9ca3af;
-
-    margin-top: 2px;
-}
-
-
 /* =====================================================
-   FEED
+FEED
 ===================================================== */
 
 .feed-header {
@@ -473,7 +456,7 @@ button {
 
 
 /* =====================================================
-   POST CARD
+POST CARD
 ===================================================== */
 
 .post-card {
@@ -656,7 +639,7 @@ button {
 
 
 /* =====================================================
-   RIGHT SIDEBAR
+RIGHT SIDEBAR
 ===================================================== */
 
 .widget {
@@ -725,7 +708,155 @@ button {
 
 
 /* =====================================================
-   MODAL
+COMMENT SECTION
+===================================================== */
+
+.comment-section {
+    border-top: 1px solid #f0f0f0;
+
+    margin-top: 12px;
+
+    padding-top: 12px;
+}
+
+
+.comment-list {
+    margin-bottom: 10px;
+}
+
+
+.no-comments {
+    color: #9ca3af;
+
+    font-size: 12px;
+
+    margin-bottom: 10px;
+}
+
+
+.comment-item {
+    display: flex;
+
+    gap: 8px;
+
+    padding: 8px;
+
+    margin-bottom: 6px;
+
+    background: #f9fafb;
+
+    border-radius: 8px;
+}
+
+
+.comment-avatar {
+    width: 30px;
+
+    height: 30px;
+
+    border-radius: 50%;
+
+    background: #eef2ff;
+
+    color: #4f46e5;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    flex-shrink: 0;
+}
+
+
+.comment-body {
+    flex: 1;
+}
+
+
+.comment-body strong {
+    display: block;
+
+    font-size: 12px;
+
+    color: #374151;
+
+    margin-bottom: 3px;
+}
+
+
+.comment-body p {
+    font-size: 12px;
+
+    color: #6b7280;
+
+    line-height: 1.4;
+
+    margin: 0;
+
+    white-space: pre-wrap;
+}
+
+
+.comment-form {
+    display: flex;
+
+    gap: 8px;
+}
+
+
+.comment-input {
+    flex: 1;
+
+    border: 1px solid #d1d5db;
+
+    border-radius: 7px;
+
+    padding: 8px 10px;
+
+    font-family: inherit;
+
+    font-size: 12px;
+
+    outline: none;
+}
+
+
+.comment-input:focus {
+    border-color: #6366f1;
+
+    box-shadow:
+        0 0 0 2px rgba(99, 102, 241, 0.1);
+}
+
+
+.comment-submit {
+    border: none;
+
+    background: #4f46e5;
+
+    color: white;
+
+    border-radius: 7px;
+
+    padding: 8px 12px;
+
+    font-size: 12px;
+
+    font-weight: 600;
+
+    cursor: pointer;
+}
+
+
+.comment-submit:hover {
+    background: #4338ca;
+}
+
+
+/* =====================================================
+MODAL
 ===================================================== */
 
 .modal {
@@ -735,7 +866,8 @@ button {
 
     inset: 0;
 
-    background: rgba(15, 23, 42, 0.55);
+    background:
+        rgba(15, 23, 42, 0.55);
 
     align-items: center;
 
@@ -870,7 +1002,7 @@ button {
 
 
 /* =====================================================
-   LOADING
+LOADING
 ===================================================== */
 
 .loading {
@@ -889,7 +1021,7 @@ button {
 
 
 /* =====================================================
-   NO POSTS
+NO POSTS
 ===================================================== */
 
 .no-posts {
@@ -915,7 +1047,7 @@ button {
 
 
 /* =====================================================
-   ERROR
+ERROR
 ===================================================== */
 
 .error-message {
@@ -939,7 +1071,7 @@ button {
 
 
 /* =====================================================
-   RESPONSIVE
+RESPONSIVE
 ===================================================== */
 
 @media (max-width: 1100px) {
@@ -952,6 +1084,7 @@ button {
     .right-sidebar {
         display: none;
     }
+
 }
 
 
@@ -1016,6 +1149,11 @@ button {
 
         align-items: stretch;
     }
+
+    .comment-form {
+        flex-direction: column;
+    }
+
 }
 
 
@@ -1048,90 +1186,118 @@ button {
     .hero h1 {
         font-size: 30px;
     }
+
 }
 
 
 /* =====================================================
-   DARK MODE
+DARK MODE
 ===================================================== */
 
 body.dark-mode {
     background: #0f172a;
+
     color: #f8fafc;
 }
 
+
 body.dark-mode .navbar {
     background: #1e293b;
+
     border-bottom-color: #334155;
 }
+
 
 body.dark-mode .logo {
     color: #f8fafc;
 }
 
+
 body.dark-mode .nav-links a {
     color: #94a3b8;
 }
+
 
 body.dark-mode .nav-links a:hover,
 body.dark-mode .nav-links a.active {
     color: #818cf8;
 }
 
+
 body.dark-mode .search-box {
     background: #334155;
 }
+
 
 body.dark-mode .search-box input {
     color: #f8fafc;
 }
 
+
 body.dark-mode .search-box input::placeholder {
     color: #94a3b8;
 }
 
+
 body.dark-mode .profile-btn,
 body.dark-mode .theme-toggle-btn {
     background: #334155;
+
     border-color: #475569;
+
     color: #f8fafc;
 }
+
 
 body.dark-mode .profile-btn:hover,
 body.dark-mode .theme-toggle-btn:hover {
     background: #475569;
 }
 
+
 body.dark-mode .hero {
-    background: linear-gradient(120deg, #1e1b4b, #311b92);
+    background:
+        linear-gradient(120deg,
+            #1e1b4b,
+            #311b92);
+
     border-color: #3730a3;
 }
+
 
 body.dark-mode .hero h1 {
     color: #f8fafc;
 }
 
+
 body.dark-mode .hero h1 span {
     color: #818cf8;
 }
+
 
 body.dark-mode .hero-label {
     color: #a5b4fc;
 }
 
+
 body.dark-mode .hero-description {
     color: #cbd5e1;
 }
 
+
 body.dark-mode .secondary-btn {
     background: #334155;
+
     border-color: #475569;
+
     color: #f8fafc;
 }
+
 
 body.dark-mode .secondary-btn:hover {
     background: #475569;
 }
+
 
 body.dark-mode .sidebar-section,
 body.dark-mode .widget,
@@ -1139,14 +1305,20 @@ body.dark-mode .post-card,
 body.dark-mode .loading,
 body.dark-mode .no-posts {
     background: #1e293b;
+
     border-color: #334155;
+
     color: #f8fafc;
 }
 
+
 body.dark-mode .post-card:hover {
     border-color: #6366f1;
-    box-shadow: 0 5px 18px rgba(0, 0, 0, 0.4);
+
+    box-shadow:
+        0 5px 18px rgba(0, 0, 0, 0.4);
 }
+
 
 body.dark-mode .sidebar-section h3,
 body.dark-mode .widget h3,
@@ -1154,97 +1326,177 @@ body.dark-mode .no-posts h3 {
     color: #94a3b8;
 }
 
+
 body.dark-mode .category-btn {
     color: #cbd5e1;
 }
 
+
 body.dark-mode .category-btn:hover,
 body.dark-mode .category-btn.active {
     background: #312e81;
+
     color: #a5b4fc;
 }
+
 
 body.dark-mode #sort-select {
     background: #334155;
+
     border-color: #475569;
+
     color: #f8fafc;
 }
 
+
 body.dark-mode .post-category {
     background: #312e81;
+
     color: #a5b4fc;
 }
+
 
 body.dark-mode .post-card h3 {
     color: #f8fafc;
 }
 
+
 body.dark-mode .post-content {
     color: #cbd5e1;
 }
+
 
 body.dark-mode .post-footer {
     border-top-color: #334155;
 }
 
+
 body.dark-mode .post-author strong {
     color: #f8fafc;
 }
 
+
 body.dark-mode .author-avatar {
     background: #312e81;
+
     color: #a5b4fc;
 }
+
 
 body.dark-mode .post-action {
     color: #94a3b8;
 }
 
+
 body.dark-mode .post-action:hover {
     color: #818cf8;
 }
+
 
 body.dark-mode .trending-item {
     border-bottom-color: #334155;
 }
 
+
 body.dark-mode .trending-item strong {
     color: #f8fafc;
 }
+
 
 body.dark-mode .community-guidelines p {
     color: #cbd5e1;
 }
 
+
+/* =====================================================
+DARK MODE - COMMENTS
+===================================================== */
+
+body.dark-mode .comment-section {
+    border-top-color: #334155;
+}
+
+
+body.dark-mode .comment-item {
+    background: #0f172a;
+}
+
+
+body.dark-mode .comment-body strong {
+    color: #f8fafc;
+}
+
+
+body.dark-mode .comment-body p {
+    color: #cbd5e1;
+}
+
+
+body.dark-mode .comment-input {
+    background: #1e293b;
+
+    border-color: #475569;
+
+    color: #f8fafc;
+}
+
+
+body.dark-mode .comment-input::placeholder {
+    color: #94a3b8;
+}
+
+
+body.dark-mode .comment-avatar {
+    background: #312e81;
+
+    color: #a5b4fc;
+}
+
+
+/* =====================================================
+DARK MODE - MODAL
+===================================================== */
+
 body.dark-mode .modal-content {
     background: #1e293b;
+
     color: #f8fafc;
+
     border: 1px solid #334155;
 }
+
 
 body.dark-mode .modal-header h2,
 body.dark-mode #post-form label {
     color: #f8fafc;
 }
 
+
 body.dark-mode .close-btn {
     color: #94a3b8;
 }
+
 
 body.dark-mode .close-btn:hover {
     color: #f8fafc;
 }
 
+
 body.dark-mode #post-form input,
 body.dark-mode #post-form select,
 body.dark-mode #post-form textarea {
     background: #0f172a;
+
     border-color: #334155;
+
     color: #f8fafc;
 }
 
+
 body.dark-mode .error-message {
     background: #1e293b;
+
     border-color: #991b1b;
+
     color: #fca5a5;
 }
