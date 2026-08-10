@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SYNAPSE - Department Community Platform</title>
+    <meta name="description" content="SYNAPSE - Connect with classmates, share knowledge, and stay updated with your department.">
     <link rel="stylesheet" href="style.css">
 </head>
 
@@ -21,16 +22,15 @@
         </div>
 
         <nav class="nav-links">
-            <a href="#" class="nav-link active">Home</a>
-            <a href="#" class="nav-link">Explore</a>
-            <a href="#" class="nav-link">Resources</a>
-            <a href="admin.html" class="nav-link" title="Go to Admin Panel">Admin</a>
+            <a href="#" class="nav-link active" id="nav-link-home">Home</a>
+            <a href="#" class="nav-link" id="nav-link-explore">Explore</a>
+            <a href="#" class="nav-link" id="nav-link-resources">Resources</a>
         </nav>
 
         <div class="nav-right">
             <div class="search-box">
                 <span class="search-icon">🔍</span>
-                <input type="text" id="search-input" placeholder="Search posts, authors...">
+                <input type="text" id="search-input" placeholder="Search posts, authors..." aria-label="Search posts">
             </div>
 
             <button class="icon-btn" id="notification-btn" type="button" title="Notifications" aria-label="Notifications">
@@ -43,29 +43,17 @@
             </button>
 
             <div class="profile-menu-container">
-                <button class="profile-avatar-btn" id="profile-btn" type="button" aria-label="User Profile">
-                    S
+                <button class="profile-avatar-btn" id="profile-btn" type="button" aria-label="User Profile" title="Profile">
+                    <span id="profile-initials">S</span>
                 </button>
-                <div class="profile-dropdown" id="profile-dropdown">
+                <div class="profile-dropdown" id="profile-dropdown" role="menu">
                     <div class="profile-dropdown-header">
-                        <strong>Student Account</strong>
-                        <span>student@dept.edu</span>
+                        <strong id="profile-name">Student</strong>
+                        <span id="profile-email">Loading...</span>
                     </div>
-                    <button class="dropdown-item" id="menu-my-posts" type="button">
-                        📝 My Posts
-                    </button>
-                    <button class="dropdown-item" id="menu-saved-posts" type="button">
-                        🔖 Saved Posts
-                    </button>
-                    <a href="admin.html" class="dropdown-item">
-                        🛡️ Admin Panel
-                    </a>
-                    <button class="dropdown-item" id="menu-settings" type="button">
-                        ⚙️ Settings
-                    </button>
-                    <button class="dropdown-item" id="menu-logout" type="button">
-                        🚪 Logout
-                    </button>
+                    <button class="dropdown-item" id="menu-my-posts" type="button">📝 My Posts</button>
+                    <button class="dropdown-item" id="menu-saved-posts" type="button">🔖 Saved Posts</button>
+                    <button class="dropdown-item" id="menu-logout" type="button">🚪 Logout</button>
                 </div>
             </div>
         </div>
@@ -81,7 +69,7 @@
                     <span class="hero-pill">✨ Welcome Back 👋</span>
                     <h1>Your Department.<br>Your Community.</h1>
                     <p class="hero-description">
-                        Connect with classmates, share knowledge, discover project & internship opportunities, and stay updated with department announcements.
+                        Connect with classmates, share knowledge, discover project &amp; internship opportunities, and stay updated with department announcements.
                     </p>
                     <div class="hero-buttons">
                         <button class="btn-hero-primary" id="hero-create-btn" type="button">
@@ -95,7 +83,7 @@
 
                 <div class="hero-stats">
                     <div class="stat-item">
-                        <span class="stat-number" id="stat-students">1,240</span>
+                        <span class="stat-number">1,240</span>
                         <span class="stat-label">Students</span>
                     </div>
                     <div class="stat-item">
@@ -103,7 +91,7 @@
                         <span class="stat-label">Discussions</span>
                     </div>
                     <div class="stat-item">
-                        <span class="stat-number" id="stat-events">48</span>
+                        <span class="stat-number">48</span>
                         <span class="stat-label">Events</span>
                     </div>
                 </div>
@@ -173,7 +161,7 @@
                         <p id="feed-subtitle">See what's happening in your department</p>
                     </div>
                     <div class="feed-controls">
-                        <select id="sort-select" class="select-control">
+                        <select id="sort-select" class="select-control" aria-label="Sort posts">
                             <option value="latest">Latest</option>
                             <option value="oldest">Oldest</option>
                             <option value="popular">Most Popular</option>
@@ -185,13 +173,13 @@
                 </div>
 
                 <!-- Quick Post Trigger Bar -->
-                <div class="quick-post-bar" id="quick-post-trigger">
-                    <div class="user-quick-avatar">S</div>
+                <div class="quick-post-bar" id="quick-post-trigger" role="button" tabindex="0" aria-label="Create a new post">
+                    <div class="user-quick-avatar" id="quick-avatar">S</div>
                     <div class="quick-post-input">Share something with your department...</div>
                 </div>
 
                 <!-- POSTS FEED CONTAINER -->
-                <div id="posts-container">
+                <div id="posts-container" role="feed" aria-label="Community posts">
                     <!-- Skeletons render here initially -->
                 </div>
 
@@ -202,10 +190,8 @@
 
                 <!-- TRENDING DISCUSSIONS -->
                 <div class="widget-card">
-                    <div class="widget-title">
-                        <span>🔥</span> Trending Discussions
-                    </div>
-                    <div class="trending-list">
+                    <div class="widget-title"><span>🔥</span> Trending Discussions</div>
+                    <div class="trending-list" id="trending-list">
                         <div class="trending-item">
                             <span class="trending-rank">01</span>
                             <div class="trending-details">
@@ -216,7 +202,7 @@
                         <div class="trending-item">
                             <span class="trending-rank">02</span>
                             <div class="trending-details">
-                                <h4>DBMS & OS Lab Notes Share</h4>
+                                <h4>DBMS &amp; OS Lab Notes Share</h4>
                                 <span>94 interactions</span>
                             </div>
                         </div>
@@ -232,12 +218,10 @@
 
                 <!-- DEPARTMENT ANNOUNCEMENTS -->
                 <div class="widget-card">
-                    <div class="widget-title">
-                        <span>📢</span> Announcements
-                    </div>
+                    <div class="widget-title"><span>📢</span> Announcements</div>
                     <div class="announcements-list">
                         <div class="announcement-item">
-                            <p>Internal Assessment Schedule published for CS & IT.</p>
+                            <p>Internal Assessment Schedule published for CS &amp; IT.</p>
                             <span>Today</span>
                         </div>
                         <div class="announcement-item">
@@ -249,13 +233,11 @@
 
                 <!-- COMMUNITY GUIDELINES -->
                 <div class="widget-card">
-                    <div class="widget-title">
-                        <span>💡</span> Guidelines
-                    </div>
+                    <div class="widget-title"><span>💡</span> Guidelines</div>
                     <ul class="guidelines-list">
                         <li>Be respectful to classmates</li>
                         <li>Help answer peer queries</li>
-                        <li>Avoid spam & self-promotion</li>
+                        <li>Avoid spam &amp; self-promotion</li>
                         <li>Share verified academic info</li>
                     </ul>
                 </div>
@@ -266,22 +248,17 @@
     </main>
 
     <!-- ================= CREATE POST MODAL ================= -->
-    <div class="modal-overlay" id="post-modal">
+    <div class="modal-overlay" id="post-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
         <div class="modal-card">
             <div class="modal-header">
-                <h3>Create a Discussion</h3>
-                <button id="close-modal" class="modal-close-btn" type="button">&times;</button>
+                <h3 id="modal-title">Create a Discussion</h3>
+                <button id="close-modal" class="modal-close-btn" type="button" aria-label="Close modal">&times;</button>
             </div>
             <div class="modal-body">
-                <form id="post-form">
+                <form id="post-form" novalidate>
                     <div class="form-group">
                         <label for="title">Post Title</label>
                         <input type="text" id="title" placeholder="What do you want to discuss?" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="author">Your Name</label>
-                        <input type="text" id="author" placeholder="Enter your full name" required>
                     </div>
 
                     <div class="form-group">
@@ -305,7 +282,7 @@
 
                     <div class="form-actions">
                         <button type="button" id="cancel-post" class="btn-cancel">Cancel</button>
-                        <button type="submit" class="btn-publish">Publish Post</button>
+                        <button type="submit" class="btn-publish" id="publish-btn">Publish Post</button>
                     </div>
                 </form>
             </div>
@@ -313,7 +290,7 @@
     </div>
 
     <!-- TOAST CONTAINER -->
-    <div id="toast-container"></div>
+    <div id="toast-container" aria-live="polite"></div>
 
     <!-- JAVASCRIPT -->
     <script src="script.js"></script>

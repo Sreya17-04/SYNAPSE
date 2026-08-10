@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SYNAPSE – Student Login</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@600;700;800&display=swap">
+    <style>
+        :root {
+            --accent: #4f46e5;
+            --accent-hover: #4338ca;
+            --accent-light: #eef2ff;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --text: #0f172a;
+            --text-secondary: #475569;
+            --text-muted: #94a3b8;
+            --border: #e2e8f0;
+            --danger: #ef4444;
+            --success: #10b981;
+            --radius: 12px;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background: var(--bg);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .auth-page {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            min-height: 100vh;
+        }
+        /* Left branding panel */
+        .brand-panel {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 3rem;
+            color: #fff;
+            position: relative;
+            overflow: hidden;
+        }
+        .brand-panel::before {
+            content: '';
+            position: absolute;
+            width: 400px; height: 400px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 50%;
+            top: -100px; right: -100px;
+        }
+        .brand-panel::after {
+            content: '';
+            position: absolute;
+            width: 300px; height: 300px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 50%;
+            bottom: -80px; left: -80px;
+        }
+        .brand-content { position: relative; z-index: 2; text-align: center; }
+        .brand-logo {
+            width: 70px; height: 70px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 20px;
+            display: flex; align-items: center; justify-content: center;
+            font-family: 'Outfit', sans-serif;
+            font-size: 2rem; font-weight: 800;
+            margin: 0 auto 1.5rem;
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255,255,255,0.3);
+        }
+        .brand-name {
+            font-family: 'Outfit', sans-serif;
+            font-size: 2.5rem; font-weight: 800;
+            margin-bottom: 0.5rem;
+        }
+        .brand-tagline {
+            font-size: 1rem;
+            color: rgba(255,255,255,0.85);
+            margin-bottom: 3rem;
+        }
+        .brand-features {
+            display: flex; flex-direction: column; gap: 1rem;
+            text-align: left;
+        }
+        .brand-feature {
+            display: flex; align-items: center; gap: 0.85rem;
+            background: rgba(255,255,255,0.12);
+            padding: 0.85rem 1.25rem;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            backdrop-filter: blur(8px);
+        }
+        /* Right login panel */
+        .form-panel {
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            padding: 3rem 2rem;
+            background: var(--card);
+        }
+        .form-box { width: 100%; max-width: 420px; }
+        .form-box h2 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.8rem; font-weight: 800;
+            color: var(--text);
+            margin-bottom: 0.35rem;
+        }
+        .form-box p {
+            color: var(--text-secondary); font-size: 0.9rem;
+            margin-bottom: 2rem;
+        }
+        .form-group { margin-bottom: 1.25rem; }
+        .form-group label {
+            display: block; font-size: 0.85rem; font-weight: 600;
+            color: var(--text); margin-bottom: 0.4rem;
+        }
+        .form-group input {
+            width: 100%; padding: 0.75rem 1rem;
+            border-radius: 8px;
+            border: 1.5px solid var(--border);
+            background: #f8fafc;
+            color: var(--text); font-size: 0.95rem;
+            font-family: inherit;
+            transition: all 0.15s;
+        }
+        .form-group input:focus {
+            outline: none; border-color: var(--accent);
+            background: #fff;
+            box-shadow: 0 0 0 3px rgba(79,70,229,0.12);
+        }
+        .btn-submit {
+            width: 100%; padding: 0.85rem;
+            background: var(--accent); color: #fff;
+            border: none; border-radius: 8px;
+            font-weight: 700; font-size: 1rem;
+            cursor: pointer; font-family: inherit;
+            transition: background 0.15s, transform 0.1s;
+            margin-top: 0.5rem;
+        }
+        .btn-submit:hover { background: var(--accent-hover); transform: translateY(-1px); }
+        .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+        .form-footer {
+            text-align: center; margin-top: 1.5rem;
+            font-size: 0.88rem; color: var(--text-muted);
+        }
+        .form-footer a { color: var(--accent); font-weight: 600; }
+        .admin-link-box {
+            text-align: center; margin-top: 2rem; padding-top: 1.5rem;
+            border-top: 1px solid var(--border);
+            font-size: 0.85rem; color: var(--text-muted);
+        }
+        .admin-link-box a { color: var(--text-secondary); font-weight: 600; }
+        .alert-msg {
+            padding: 0.75rem 1rem; border-radius: 8px;
+            font-size: 0.88rem; font-weight: 500;
+            margin-bottom: 1.25rem; display: none;
+        }
+        .alert-error { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+        .alert-success { background: #d1fae5; color: #065f46; border: 1px solid #6ee7b7; }
+        @media (max-width: 768px) {
+            .auth-page { grid-template-columns: 1fr; }
+            .brand-panel { display: none; }
+            .form-panel { padding: 2rem 1.25rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-page">
+        <!-- Left Branding -->
+        <div class="brand-panel">
+            <div class="brand-content">
+                <div class="brand-logo">S</div>
+                <div class="brand-name">SYNAPSE</div>
+                <div class="brand-tagline">Department Community Platform</div>
+                <div class="brand-features">
+                    <div class="brand-feature">📚 Share academic notes & resources</div>
+                    <div class="brand-feature">💼 Discover placement & internship tips</div>
+                    <div class="brand-feature">💬 Connect and collaborate with peers</div>
+                    <div class="brand-feature">📢 Stay updated with announcements</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Login Form -->
+        <div class="form-panel">
+            <div class="form-box">
+                <h2>Student Login</h2>
+                <p>Welcome back! Sign in to your SYNAPSE account.</p>
+
+                <div class="alert-msg alert-error" id="alert-error"></div>
+                <div class="alert-msg alert-success" id="alert-success"></div>
+
+                <form id="login-form">
+                    <div class="form-group">
+                        <label for="email">Email Address</label>
+                        <input type="email" id="email" placeholder="you@college.edu" required autocomplete="email">
+                    </div>
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <input type="password" id="password" placeholder="Your password" required autocomplete="current-password">
+                    </div>
+                    <button type="submit" class="btn-submit" id="submit-btn">Sign In</button>
+                </form>
+
+                <div class="form-footer">
+                    Don't have an account? <a href="register.html">Create one</a>
+                </div>
+
+                <div class="admin-link-box">
+                    Admin? <a href="admin-login.html">→ Admin Login</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API = "http://localhost:5000";
+
+        // Redirect if already logged in as student
+        const token = localStorage.getItem("synapse_token");
+        const role = localStorage.getItem("synapse_role");
+        if (token && role === "student") {
+            window.location.href = "index.html";
+        } else if (token && role === "admin") {
+            window.location.href = "admin.html";
+        }
+
+        function showAlert(type, message) {
+            const errEl = document.getElementById("alert-error");
+            const sucEl = document.getElementById("alert-success");
+            errEl.style.display = "none";
+            sucEl.style.display = "none";
+
+            if (type === "error") {
+                errEl.textContent = message;
+                errEl.style.display = "block";
+            } else {
+                sucEl.textContent = message;
+                sucEl.style.display = "block";
+            }
+        }
+
+        document.getElementById("login-form").addEventListener("submit", async (e) => {
+            e.preventDefault();
+
+            const email = document.getElementById("email").value.trim();
+            const password = document.getElementById("password").value;
+            const submitBtn = document.getElementById("submit-btn");
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = "Signing in...";
+
+            try {
+                const response = await fetch(`${API}/api/auth/login`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.message || "Login failed");
+                }
+
+                // Must be a student
+                if (data.user.role === "admin") {
+                    throw new Error("This is the student login. Please use the Admin Login.");
+                }
+
+                // Store auth data
+                localStorage.setItem("synapse_token", data.token);
+                localStorage.setItem("synapse_role", data.user.role);
+                localStorage.setItem("synapse_user", JSON.stringify(data.user));
+
+                showAlert("success", "Login successful! Redirecting...");
+                setTimeout(() => { window.location.href = "index.html"; }, 800);
+
+            } catch (error) {
+                showAlert("error", error.message);
+                submitBtn.disabled = false;
+                submitBtn.textContent = "Sign In";
+            }
+        });
+    </script>
+</body>
+</html>

@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SYNAPSE - Admin Moderation Panel</title>
+    <title>SYNAPSE – Admin Moderation Panel</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="admin.css">
 </head>
@@ -14,7 +14,7 @@
     <!-- ================= ADMIN NAVBAR ================= -->
     <header class="navbar">
         <div class="logo">
-            <div class="logo-badge">S</div>
+            <div class="logo-badge" style="background: linear-gradient(135deg, #dc2626, #9333ea);">S</div>
             <div class="logo-text-container">
                 <span class="logo-title">SYNAPSE ADMIN</span>
                 <span class="logo-subtitle">Moderation Dashboard</span>
@@ -29,8 +29,21 @@
             <button class="icon-btn" id="theme-toggle" type="button" aria-label="Toggle dark/light mode">
                 <span id="theme-icon">🌙</span>
             </button>
-            <div class="profile-avatar-btn" style="background: linear-gradient(135deg, #ef4444, #f59e0b);">
-                A
+
+            <div class="profile-menu-container">
+                <button class="profile-avatar-btn" id="admin-profile-btn" type="button"
+                    style="background: linear-gradient(135deg, #dc2626, #9333ea);"
+                    aria-label="Admin profile">
+                    <span id="admin-initials">A</span>
+                </button>
+                <div class="profile-dropdown" id="admin-dropdown">
+                    <div class="profile-dropdown-header">
+                        <strong id="admin-name">Admin</strong>
+                        <span id="admin-email">admin@synapse.edu</span>
+                    </div>
+                    <a href="index.html" class="dropdown-item">🏠 Community Feed</a>
+                    <button class="dropdown-item" id="admin-logout-btn" type="button">🚪 Logout</button>
+                </div>
             </div>
         </div>
     </header>
@@ -39,108 +52,171 @@
     <div class="admin-layout">
         <!-- SIDEBAR -->
         <aside class="admin-sidebar">
-            <button class="admin-nav-item active" id="tab-dashboard" type="button">
+            <button class="admin-nav-item active" id="tab-dashboard" data-tab="dashboard" type="button">
                 <span>📊</span> Dashboard
             </button>
-            <button class="admin-nav-item" id="tab-users" type="button">
+            <button class="admin-nav-item" id="tab-posts" data-tab="posts" type="button">
+                <span>📝</span> Posts
+            </button>
+            <button class="admin-nav-item" id="tab-users" data-tab="users" type="button">
                 <span>👥</span> Users
             </button>
-            <button class="admin-nav-item" id="tab-posts" type="button">
-                <span>📝</span> Posts Management
-            </button>
-            <button class="admin-nav-item" id="tab-reports" type="button">
-                <span>⚠️</span> Reports (2)
-            </button>
-            <button class="admin-nav-item" id="tab-moderation" type="button">
-                <span>🛡️</span> Moderation Rules
+            <button class="admin-nav-item" id="tab-flagged" data-tab="flagged" type="button">
+                <span>⚠️</span> Flagged (<span id="flagged-count">0</span>)
             </button>
         </aside>
 
         <!-- MAIN CONTENT -->
         <main class="admin-content">
-            <div class="admin-header-title">
-                <h1>Community Overview & Moderation</h1>
-                <p>Manage discussions, review flagged reports, and delete non-compliant posts.</p>
+
+            <!-- ===== DASHBOARD TAB ===== -->
+            <div id="panel-dashboard" class="admin-panel active-panel">
+                <div class="admin-header-title">
+                    <h1>Community Overview</h1>
+                    <p>Manage discussions, moderate content, and monitor community health.</p>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-info">
+                            <h4>Registered Students</h4>
+                            <div class="stat-value" id="stat-total-users">—</div>
+                        </div>
+                        <div class="stat-icon-wrapper">👥</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-info">
+                            <h4>Total Posts</h4>
+                            <div class="stat-value" id="stat-total-posts">—</div>
+                        </div>
+                        <div class="stat-icon-wrapper">📝</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-info">
+                            <h4>Pending Reports</h4>
+                            <div class="stat-value" id="stat-pending-reports" style="color:var(--warning);">—</div>
+                        </div>
+                        <div class="stat-icon-wrapper" style="background:#fef3c7;color:var(--warning);">⚠️</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-info">
+                            <h4>Active Discussions</h4>
+                            <div class="stat-value" id="stat-active">—</div>
+                        </div>
+                        <div class="stat-icon-wrapper">💬</div>
+                    </div>
+                </div>
+
+                <!-- Recent Posts Preview on Dashboard -->
+                <div class="table-card">
+                    <div class="table-card-header">
+                        <h2>Recent Posts</h2>
+                        <button class="btn-create-post-banner" id="refresh-btn" type="button">🔄 Refresh</button>
+                    </div>
+                    <div id="dashboard-posts-preview"></div>
+                </div>
             </div>
 
-            <!-- METRIC STATS -->
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-info">
-                        <h4>Total Registered Users</h4>
-                        <div class="stat-value" id="stat-total-users">1,240</div>
-                    </div>
-                    <div class="stat-icon-wrapper">👥</div>
+            <!-- ===== POSTS TAB ===== -->
+            <div id="panel-posts" class="admin-panel" style="display:none;">
+                <div class="admin-header-title">
+                    <h1>Posts Management</h1>
+                    <p>Review, moderate and delete community posts.</p>
                 </div>
-
-                <div class="stat-card">
-                    <div class="stat-info">
-                        <h4>Total API Posts</h4>
-                        <div class="stat-value" id="stat-total-posts">0</div>
+                <div class="table-card">
+                    <div class="table-card-header">
+                        <h2>All Posts</h2>
+                        <input type="text" id="posts-search" class="admin-search" placeholder="Search posts...">
                     </div>
-                    <div class="stat-icon-wrapper">📝</div>
-                </div>
-
-                <div class="stat-card">
-                    <div class="stat-info">
-                        <h4>Pending Reports</h4>
-                        <div class="stat-value" style="color: var(--warning);">2</div>
+                    <div style="overflow-x:auto;">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Title</th>
+                                    <th>Author</th>
+                                    <th>Category</th>
+                                    <th>Likes</th>
+                                    <th>Comments</th>
+                                    <th>Status</th>
+                                    <th>Date</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="posts-tbody"></tbody>
+                        </table>
                     </div>
-                    <div class="stat-icon-wrapper" style="background: #fef3c7; color: var(--warning);">⚠️</div>
-                </div>
-
-                <div class="stat-card">
-                    <div class="stat-info">
-                        <h4>Active Discussions</h4>
-                        <div class="stat-value" id="stat-active-discussions">356</div>
-                    </div>
-                    <div class="stat-icon-wrapper">💬</div>
                 </div>
             </div>
 
-            <!-- POSTS MANAGEMENT TABLE -->
-            <div class="table-card">
-                <div class="table-card-header">
-                    <h2>Community Posts Moderation</h2>
-                    <input type="text" id="admin-search-input" class="admin-search" placeholder="Search table...">
+            <!-- ===== USERS TAB ===== -->
+            <div id="panel-users" class="admin-panel" style="display:none;">
+                <div class="admin-header-title">
+                    <h1>User Management</h1>
+                    <p>View and manage all registered students.</p>
                 </div>
-
-                <div style="overflow-x: auto;">
-                    <table class="admin-table">
-                        <thead>
-                            <tr>
-                                <th>Title</th>
-                                <th>Author</th>
-                                <th>Category</th>
-                                <th>Date</th>
-                                <th>Status</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="admin-posts-tbody">
-                            <!-- Table rows injected via admin.js -->
-                        </tbody>
-                    </table>
+                <div class="table-card">
+                    <div class="table-card-header">
+                        <h2>All Users</h2>
+                        <input type="text" id="users-search" class="admin-search" placeholder="Search users...">
+                    </div>
+                    <div style="overflow-x:auto;">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Email</th>
+                                    <th>Role</th>
+                                    <th>Joined</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="users-tbody"></tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
+
+            <!-- ===== FLAGGED TAB ===== -->
+            <div id="panel-flagged" class="admin-panel" style="display:none;">
+                <div class="admin-header-title">
+                    <h1>Flagged Content</h1>
+                    <p>Posts that have been flagged for moderation review.</p>
+                </div>
+                <div class="table-card">
+                    <div class="table-card-header"><h2>Flagged Posts</h2></div>
+                    <div style="overflow-x:auto;">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Title</th>
+                                    <th>Author</th>
+                                    <th>Category</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="flagged-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
         </main>
     </div>
 
-    <!-- PREVIEW MODAL -->
-    <div class="modal-overlay" id="admin-modal">
+    <!-- POST PREVIEW MODAL -->
+    <div class="modal-overlay" id="admin-modal" role="dialog" aria-modal="true">
         <div class="modal-card">
             <div class="modal-header">
                 <h3 id="admin-modal-title">Post Preview</h3>
                 <button id="admin-modal-close" class="modal-close-btn" type="button">&times;</button>
             </div>
-            <div class="modal-body" id="admin-modal-body">
-                <!-- Preview details injected here -->
-            </div>
+            <div class="modal-body" id="admin-modal-body"></div>
         </div>
     </div>
 
     <!-- TOAST CONTAINER -->
-    <div id="toast-container"></div>
+    <div id="toast-container" aria-live="polite"></div>
 
     <script src="admin.js"></script>
 </body>

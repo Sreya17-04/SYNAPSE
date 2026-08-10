@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SYNAPSE – Admin Login</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@600;700;800&display=swap">
+    <style>
+        :root {
+            --accent: #dc2626;
+            --accent-hover: #b91c1c;
+            --accent-light: #fef2f2;
+            --bg: #0f172a;
+            --card: #1e293b;
+            --text: #f8fafc;
+            --text-secondary: #cbd5e1;
+            --text-muted: #64748b;
+            --border: #334155;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background: var(--bg);
+            min-height: 100vh;
+            display: flex; align-items: center; justify-content: center;
+            padding: 2rem;
+        }
+        .admin-login-wrap {
+            width: 100%; max-width: 440px;
+        }
+        .admin-badge {
+            display: flex; align-items: center; gap: 0.75rem;
+            margin-bottom: 2.5rem;
+            justify-content: center;
+        }
+        .admin-logo {
+            width: 50px; height: 50px;
+            background: linear-gradient(135deg, #dc2626, #9333ea);
+            border-radius: 14px;
+            display: flex; align-items: center; justify-content: center;
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.5rem; font-weight: 800; color: #fff;
+        }
+        .admin-brand-text h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.5rem; font-weight: 800; color: var(--text);
+        }
+        .admin-brand-text span {
+            font-size: 0.72rem; color: var(--accent);
+            font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
+        }
+        .login-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 2.5rem;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.4);
+        }
+        .login-card h2 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.5rem; font-weight: 700; color: var(--text); margin-bottom: 0.35rem;
+        }
+        .login-card p { color: var(--text-muted); font-size: 0.88rem; margin-bottom: 2rem; }
+        .security-notice {
+            background: rgba(220, 38, 38, 0.1);
+            border: 1px solid rgba(220,38,38,0.3);
+            border-radius: 8px; padding: 0.75rem 1rem;
+            display: flex; align-items: center; gap: 0.65rem;
+            font-size: 0.8rem; color: #fca5a5;
+            margin-bottom: 1.5rem;
+        }
+        .form-group { margin-bottom: 1.25rem; }
+        .form-group label { display: block; font-size: 0.82rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.4rem; }
+        .form-group input {
+            width: 100%; padding: 0.75rem 1rem; border-radius: 8px;
+            border: 1.5px solid var(--border); background: #0f172a;
+            color: var(--text); font-size: 0.95rem; font-family: inherit; transition: all 0.15s;
+        }
+        .form-group input:focus {
+            outline: none; border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(220,38,38,0.15);
+        }
+        .btn-submit {
+            width: 100%; padding: 0.85rem; background: var(--accent); color: #fff;
+            border: none; border-radius: 8px; font-weight: 700; font-size: 1rem;
+            cursor: pointer; font-family: inherit; transition: background 0.15s; margin-top: 0.5rem;
+        }
+        .btn-submit:hover { background: var(--accent-hover); }
+        .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+        .form-footer { text-align: center; margin-top: 1.5rem; font-size: 0.85rem; color: var(--text-muted); }
+        .form-footer a { color: #6366f1; font-weight: 600; }
+        .alert-msg { padding: 0.75rem 1rem; border-radius: 8px; font-size: 0.88rem; font-weight: 500; margin-bottom: 1.25rem; display: none; }
+        .alert-error { background: rgba(239,68,68,0.15); color: #fca5a5; border: 1px solid rgba(239,68,68,0.3); }
+        .alert-success { background: rgba(16,185,129,0.15); color: #6ee7b7; border: 1px solid rgba(16,185,129,0.3); }
+    </style>
+</head>
+<body>
+    <div class="admin-login-wrap">
+        <div class="admin-badge">
+            <div class="admin-logo">S</div>
+            <div class="admin-brand-text">
+                <h1>SYNAPSE</h1>
+                <span>🛡️ Admin Portal</span>
+            </div>
+        </div>
+
+        <div class="login-card">
+            <h2>Admin Login</h2>
+            <p>Restricted access. Authorized personnel only.</p>
+
+            <div class="security-notice">
+                🔒 This portal is monitored. Unauthorized access attempts are logged.
+            </div>
+
+            <div class="alert-msg alert-error" id="alert-error"></div>
+            <div class="alert-msg alert-success" id="alert-success"></div>
+
+            <form id="admin-login-form">
+                <div class="form-group">
+                    <label for="email">Admin Email</label>
+                    <input type="email" id="email" placeholder="admin@synapse.edu" required autocomplete="username">
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" placeholder="Admin password" required autocomplete="current-password">
+                </div>
+                <button type="submit" class="btn-submit" id="submit-btn">Access Admin Panel</button>
+            </form>
+
+            <div class="form-footer">
+                Student? <a href="login.html">→ Student Login</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API = "http://localhost:5000";
+
+        // Already logged in admin
+        const token = localStorage.getItem("synapse_token");
+        const role = localStorage.getItem("synapse_role");
+        if (token && role === "admin") window.location.href = "admin.html";
+
+        function showAlert(type, message) {
+            const errEl = document.getElementById("alert-error");
+            const sucEl = document.getElementById("alert-success");
+            errEl.style.display = "none";
+            sucEl.style.display = "none";
+            if (type === "error") { errEl.textContent = message; errEl.style.display = "block"; }
+            else { sucEl.textContent = message; sucEl.style.display = "block"; }
+        }
+
+        document.getElementById("admin-login-form").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const email = document.getElementById("email").value.trim();
+            const password = document.getElementById("password").value;
+            const submitBtn = document.getElementById("submit-btn");
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = "Verifying...";
+
+            try {
+                const response = await fetch(`${API}/api/auth/login`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.message || "Login failed");
+
+                // MUST be admin role
+                if (data.user.role !== "admin") {
+                    throw new Error("Access denied. This account does not have admin privileges.");
+                }
+
+                localStorage.setItem("synapse_token", data.token);
+                localStorage.setItem("synapse_role", data.user.role);
+                localStorage.setItem("synapse_user", JSON.stringify(data.user));
+
+                showAlert("success", "Admin verified! Entering dashboard...");
+                setTimeout(() => { window.location.href = "admin.html"; }, 800);
+
+            } catch (error) {
+                showAlert("error", error.message);
+                submitBtn.disabled = false;
+                submitBtn.textContent = "Access Admin Panel";
+            }
+        });
+    </script>
+</body>
+</html>
