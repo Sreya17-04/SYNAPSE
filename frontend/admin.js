@@ -1,261 +1,796 @@
 // =====================================================
-// SYNAPSE - ADMIN DASHBOARD JAVASCRIPT
-// admin.js - All admin functionality with real API
+// SYNAPSE - ADMIN DASHBOARD
+// admin.js
+// Matched specifically to admin.html
 // =====================================================
 
 const API = "http://localhost:5000";
 
 // =====================================================
-// AUTH GUARD - Must be admin
+// AUTH
 // =====================================================
 
 const token = localStorage.getItem("synapse_token");
 const userRole = localStorage.getItem("synapse_role");
-const adminUser = JSON.parse(localStorage.getItem("synapse_user") || "null");
 
-// Redirect non-admins
-if (!token || !adminUser) {
-    window.location.href = "admin-login.html";
-} else if (userRole !== "admin") {
-    // Student tried to access admin panel
-    window.location.href = "login.html";
+let adminUser = null;
+
+try {
+    adminUser = JSON.parse(
+        localStorage.getItem("synapse_user") || "null"
+    );
+} catch (error) {
+    adminUser = null;
 }
 
-// Helper: authorized fetch with admin token
+// Redirect if not logged in
+if (!token || !adminUser) {
+    window.location.replace("admin-login.html");
+    throw new Error("Admin authentication required.");
+}
+
+// Redirect non-admin users
+if (userRole !== "admin" || adminUser.role !== "admin") {
+    window.location.replace("login.html");
+    throw new Error("Admin access required.");
+}
+
+// =====================================================
+// DOM READY
+// =====================================================
+
+document.addEventListener("DOMContentLoaded", () => {
+    initAdminDashboard();
+});
+
+// =====================================================
+// AUTHENTICATED FETCH
+// =====================================================
+
 async function adminFetch(url, options = {}) {
     const headers = {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${token}`,
         ...(options.headers || {})
     };
-    return fetch(url, { ...options, headers });
+
+    return fetch(url, {
+        ...options,
+        headers
+    });
+}
+
+// =====================================================
+// ELEMENT HELPERS
+// =====================================================
+
+function get(id) {
+    return document.getElementById(id);
+}
+
+// =====================================================
+// HTML SAFETY
+// =====================================================
+
+function escapeHTML(value) {
+    if (value === null || value === undefined) {
+        return "";
+    }
+
+    return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+// =====================================================
+// INITIALS
+// =====================================================
+
+function getInitials(name) {
+    if (!name) {
+        return "A";
+    }
+
+    const parts = name.trim().split(/\s+/);
+
+    if (parts.length >= 2) {
+        return (
+            parts[0].charAt(0) +
+            parts[1].charAt(0)
+        ).toUpperCase();
+    }
+
+    return name.substring(0, 2).toUpperCase();
 }
 
 // =====================================================
 // TOAST
 // =====================================================
 
-const toastContainer = document.getElementById("toast-container");
-
 function showToast(message, type = "info") {
-    if (!toastContainer) return;
+    const container = get("toast-container");
+
+    if (!container) {
+        console.log(message);
+        return;
+    }
+
+    const icons = {
+        success: "✅",
+        error: "⚠️",
+        info: "ℹ️"
+    };
+
     const toast = document.createElement("div");
+
     toast.className = `toast ${type}`;
-    const icons = { success: "✅", error: "⚠️", info: "ℹ️" };
-    toast.innerHTML = `<span>${icons[type] || "ℹ️"}</span><div>${escapeHTML(message)}</div>`;
-    toastContainer.appendChild(toast);
+
+    toast.innerHTML = `
+        <span>${icons[type] || "ℹ️"}</span>
+        <div>${escapeHTML(message)}</div>
+    `;
+
+    container.appendChild(toast);
+
     setTimeout(() => {
         toast.style.opacity = "0";
-        setTimeout(() => toast.remove(), 300);
-    }, 3500);
-}
 
-function escapeHTML(str) {
-    if (!str) return "";
-    return String(str)
-        .replace(/&/g, "&amp;").replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-}
-
-function getInitials(name) {
-    if (!name) return "U";
-    const parts = name.trim().split(" ");
-    return parts.length >= 2 ? (parts[0][0] + parts[1][0]).toUpperCase() : name.slice(0, 2).toUpperCase();
+        setTimeout(() => {
+            toast.remove();
+        }, 300);
+    }, 3000);
 }
 
 // =====================================================
-// THEME MANAGEMENT
+// THEME
 // =====================================================
-
-const themeToggleBtn = document.getElementById("theme-toggle");
-const themeIcon = document.getElementById("theme-icon");
 
 function initTheme() {
-    const saved = localStorage.getItem("synapse_theme");
-    if (saved === "dark") {
+    const savedTheme =
+        localStorage.getItem("synapse_theme") || "light";
+
+    const icon = get("theme-icon");
+
+    if (savedTheme === "dark") {
         document.body.classList.add("dark-mode");
-        if (themeIcon) themeIcon.textContent = "☀️";
+
+        if (icon) {
+            icon.textContent = "☀️";
+        }
+    } else {
+        document.body.classList.remove("dark-mode");
+
+        if (icon) {
+            icon.textContent = "🌙";
+        }
     }
 }
 
-themeToggleBtn?.addEventListener("click", () => {
-    const isDark = document.body.classList.contains("dark-mode");
-    document.body.classList.toggle("dark-mode");
-    localStorage.setItem("synapse_theme", isDark ? "light" : "dark");
-    if (themeIcon) themeIcon.textContent = isDark ? "🌙" : "☀️";
-});
+function setupThemeToggle() {
+    const button = get("theme-toggle");
 
-initTheme();
+    if (!button) {
+        return;
+    }
 
-// =====================================================
-// POPULATE ADMIN USER INFO
-// =====================================================
+    button.addEventListener("click", () => {
+        const isDark =
+            document.body.classList.contains("dark-mode");
 
-if (adminUser) {
-    const nameEl = document.getElementById("admin-name");
-    const emailEl = document.getElementById("admin-email");
-    const initialsEl = document.getElementById("admin-initials");
-    if (nameEl) nameEl.textContent = adminUser.name || "Admin";
-    if (emailEl) emailEl.textContent = adminUser.email || "";
-    if (initialsEl) initialsEl.textContent = getInitials(adminUser.name);
+        if (isDark) {
+            document.body.classList.remove("dark-mode");
+            localStorage.setItem(
+                "synapse_theme",
+                "light"
+            );
+
+            const icon = get("theme-icon");
+
+            if (icon) {
+                icon.textContent = "🌙";
+            }
+        } else {
+            document.body.classList.add("dark-mode");
+            localStorage.setItem(
+                "synapse_theme",
+                "dark"
+            );
+
+            const icon = get("theme-icon");
+
+            if (icon) {
+                icon.textContent = "☀️";
+            }
+        }
+    });
 }
 
-// Profile dropdown
-const adminProfileBtn = document.getElementById("admin-profile-btn");
-const adminDropdown = document.getElementById("admin-dropdown");
-adminProfileBtn?.addEventListener("click", (e) => {
-    e.stopPropagation();
-    adminDropdown?.classList.toggle("show");
-});
-document.addEventListener("click", (e) => {
-    if (!adminDropdown?.contains(e.target) && e.target !== adminProfileBtn) {
-        adminDropdown?.classList.remove("show");
+// =====================================================
+// ADMIN PROFILE
+// =====================================================
+
+function setupAdminProfile() {
+    const nameElement = get("admin-name");
+    const emailElement = get("admin-email");
+    const initialsElement = get("admin-initials");
+
+    if (nameElement) {
+        nameElement.textContent =
+            adminUser.name || "Admin";
     }
-});
 
-// Logout
-document.getElementById("admin-logout-btn")?.addEventListener("click", () => {
-    localStorage.removeItem("synapse_token");
-    localStorage.removeItem("synapse_role");
-    localStorage.removeItem("synapse_user");
-    window.location.href = "admin-login.html";
-});
+    if (emailElement) {
+        emailElement.textContent =
+            adminUser.email || "admin@synapse.edu";
+    }
+
+    if (initialsElement) {
+        initialsElement.textContent =
+            getInitials(adminUser.name);
+    }
+}
 
 // =====================================================
-// APPLICATION STATE
+// PROFILE DROPDOWN
 // =====================================================
 
-let allAdminPosts = [];
-let allUsers = [];
-let currentTab = "dashboard";
+function setupProfileDropdown() {
+    const profileButton =
+        get("admin-profile-btn");
+
+    const dropdown =
+        get("admin-dropdown");
+
+    if (!profileButton || !dropdown) {
+        return;
+    }
+
+    profileButton.addEventListener(
+        "click",
+        (event) => {
+            event.stopPropagation();
+
+            dropdown.classList.toggle("show");
+        }
+    );
+
+    document.addEventListener(
+        "click",
+        (event) => {
+
+            if (
+                !dropdown.contains(event.target) &&
+                event.target !== profileButton
+            ) {
+                dropdown.classList.remove("show");
+            }
+
+        }
+    );
+}
+
+// =====================================================
+// LOGOUT
+// =====================================================
+
+function setupLogout() {
+    const logoutButton =
+        get("admin-logout-btn");
+
+    if (!logoutButton) {
+        return;
+    }
+
+    logoutButton.addEventListener(
+        "click",
+        () => {
+
+            localStorage.removeItem(
+                "synapse_token"
+            );
+
+            localStorage.removeItem(
+                "synapse_role"
+            );
+
+            localStorage.removeItem(
+                "synapse_user"
+            );
+
+            window.location.href =
+                "admin-login.html";
+        }
+    );
+}
+
+// =====================================================
+// BACK TO COMMUNITY
+// =====================================================
+
+function setupBackToCommunity() {
+
+    // Your HTML already has:
+    // <a href="index.html" class="nav-link">
+    //     ← Back to Community
+    // </a>
+
+    // We intentionally DO NOT prevent the default
+    // navigation.
+
+    const links =
+        document.querySelectorAll(
+            'a[href="index.html"]'
+        );
+
+    links.forEach((link) => {
+
+        link.addEventListener(
+            "click",
+            () => {
+
+                // Close dropdown if open
+                const dropdown =
+                    get("admin-dropdown");
+
+                if (dropdown) {
+                    dropdown.classList.remove("show");
+                }
+
+                // Let browser navigate normally
+            }
+        );
+
+    });
+}
 
 // =====================================================
 // TAB NAVIGATION
 // =====================================================
 
-const tabBtns = document.querySelectorAll(".admin-nav-item[data-tab]");
-const panels = document.querySelectorAll(".admin-panel");
+let currentTab = "dashboard";
 
-tabBtns.forEach(btn => {
-    btn.addEventListener("click", () => {
-        const tab = btn.dataset.tab;
-        currentTab = tab;
+function setupTabs() {
 
-        tabBtns.forEach(b => b.classList.remove("active"));
-        btn.classList.add("active");
+    const tabButtons =
+        document.querySelectorAll(
+            ".admin-nav-item[data-tab]"
+        );
 
-        panels.forEach(p => p.style.display = "none");
-        const panel = document.getElementById(`panel-${tab}`);
-        if (panel) panel.style.display = "block";
+    const panels =
+        document.querySelectorAll(
+            ".admin-panel"
+        );
 
-        if (tab === "posts") renderPostsTable();
-        else if (tab === "users") renderUsersTable();
-        else if (tab === "flagged") renderFlaggedTable();
+    if (!tabButtons.length) {
+        return;
+    }
+
+    tabButtons.forEach((button) => {
+
+        button.addEventListener(
+            "click",
+            () => {
+
+                const tab =
+                    button.dataset.tab;
+
+                currentTab = tab;
+
+                // Remove active from all buttons
+                tabButtons.forEach((btn) => {
+                    btn.classList.remove("active");
+                });
+
+                // Activate selected button
+                button.classList.add("active");
+
+                // Hide all panels
+                panels.forEach((panel) => {
+
+                    panel.style.display = "none";
+                    panel.classList.remove(
+                        "active-panel"
+                    );
+
+                });
+
+                // Show selected panel
+                const selectedPanel =
+                    get(`panel-${tab}`);
+
+                if (selectedPanel) {
+
+                    selectedPanel.style.display =
+                        "block";
+
+                    selectedPanel.classList.add(
+                        "active-panel"
+                    );
+                }
+
+                // Render current content
+                if (tab === "dashboard") {
+                    renderDashboardPreview();
+                }
+
+                if (tab === "posts") {
+                    renderPostsTable(
+                        get("posts-search")?.value || ""
+                    );
+                }
+
+                if (tab === "users") {
+                    renderUsersTable(
+                        get("users-search")?.value || ""
+                    );
+                }
+
+                if (tab === "flagged") {
+                    renderFlaggedTable();
+                }
+
+            }
+        );
+
     });
-});
+}
 
 // =====================================================
-// FETCH STATS
+// GLOBAL DATA
+// =====================================================
+
+let allAdminPosts = [];
+let allUsers = [];
+
+// =====================================================
+// FETCH DASHBOARD STATS
 // =====================================================
 
 async function fetchStats() {
-    try {
-        const res = await adminFetch(`${API}/api/admin/stats`);
 
-        if (res.status === 403) {
-            showToast("Access denied. Redirecting to login.", "error");
-            setTimeout(() => { window.location.href = "admin-login.html"; }, 1500);
+    try {
+
+        const response =
+            await adminFetch(
+                `${API}/api/admin/stats`
+            );
+
+        if (
+            response.status === 401 ||
+            response.status === 403
+        ) {
+
+            showToast(
+                "Admin session expired.",
+                "error"
+            );
+
+            setTimeout(() => {
+                window.location.href =
+                    "admin-login.html";
+            }, 800);
+
             return;
         }
 
-        const data = await res.json();
+        if (!response.ok) {
+            throw new Error(
+                `Stats request failed: ${response.status}`
+            );
+        }
 
-        document.getElementById("stat-total-users").textContent = data.totalUsers ?? "—";
-        document.getElementById("stat-total-posts").textContent = data.totalPosts ?? "—";
-        document.getElementById("stat-pending-reports").textContent = data.pendingReports ?? "—";
-        document.getElementById("stat-active").textContent = data.activeDiscussions ?? "—";
-        document.getElementById("flagged-count").textContent = data.pendingReports ?? 0;
+        const data =
+            await response.json();
 
-    } catch (err) {
-        console.error("Stats fetch error:", err);
-        showToast("Failed to load dashboard stats.", "error");
+        const totalUsers =
+            get("stat-total-users");
+
+        const totalPosts =
+            get("stat-total-posts");
+
+        const pendingReports =
+            get("stat-pending-reports");
+
+        const activeDiscussions =
+            get("stat-active");
+
+        const flaggedCount =
+            get("flagged-count");
+
+        if (totalUsers) {
+            totalUsers.textContent =
+                data.totalUsers ?? 0;
+        }
+
+        if (totalPosts) {
+            totalPosts.textContent =
+                data.totalPosts ?? 0;
+        }
+
+        if (pendingReports) {
+            pendingReports.textContent =
+                data.pendingReports ?? 0;
+        }
+
+        if (activeDiscussions) {
+            activeDiscussions.textContent =
+                data.activeDiscussions ?? 0;
+        }
+
+        if (flaggedCount) {
+            flaggedCount.textContent =
+                data.pendingReports ?? 0;
+        }
+
+    } catch (error) {
+
+        console.error(
+            "Stats error:",
+            error
+        );
+
+        showToast(
+            "Could not load dashboard statistics.",
+            "error"
+        );
     }
 }
 
 // =====================================================
-// FETCH ALL POSTS (Admin route)
+// FETCH POSTS
 // =====================================================
 
 async function fetchAdminPosts() {
+
     try {
-        const res = await adminFetch(`${API}/api/admin/posts`);
 
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const response =
+            await adminFetch(
+                `${API}/api/admin/posts`
+            );
 
-        allAdminPosts = await res.json();
+        if (
+            response.status === 401 ||
+            response.status === 403
+        ) {
+
+            window.location.href =
+                "admin-login.html";
+
+            return;
+        }
+
+        if (!response.ok) {
+            throw new Error(
+                `Posts request failed: ${response.status}`
+            );
+        }
+
+        const data =
+            await response.json();
+
+        // Handle either:
+        // [posts]
+        // OR { posts: [...] }
+
+        if (Array.isArray(data)) {
+            allAdminPosts = data;
+        } else if (Array.isArray(data.posts)) {
+            allAdminPosts = data.posts;
+        } else {
+            allAdminPosts = [];
+        }
+
         renderDashboardPreview();
-        renderPostsTable();
+        renderPostsTable(
+            get("posts-search")?.value || ""
+        );
         renderFlaggedTable();
 
-    } catch (err) {
-        console.error("Posts fetch error:", err);
-        document.getElementById("posts-tbody").innerHTML = `
-            <tr><td colspan="8" style="text-align:center;color:var(--danger);padding:2rem;">
-                Failed to load posts from API.
-            </td></tr>`;
+    } catch (error) {
+
+        console.error(
+            "Posts error:",
+            error
+        );
+
+        const tbody =
+            get("posts-tbody");
+
+        if (tbody) {
+
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="8"
+                        style="text-align:center;padding:2rem;color:var(--danger);">
+                        Failed to load posts.
+                    </td>
+                </tr>
+            `;
+        }
+
+        showToast(
+            "Could not load posts.",
+            "error"
+        );
     }
 }
 
 // =====================================================
-// FETCH ALL USERS (Admin route)
+// FETCH USERS
 // =====================================================
 
 async function fetchUsers() {
+
     try {
-        const res = await adminFetch(`${API}/api/admin/users`);
-        if (!res.ok) throw new Error("Failed to fetch users");
-        allUsers = await res.json();
-        renderUsersTable();
-    } catch (err) {
-        console.error("Users fetch error:", err);
+
+        const response =
+            await adminFetch(
+                `${API}/api/admin/users`
+            );
+
+        if (
+            response.status === 401 ||
+            response.status === 403
+        ) {
+
+            window.location.href =
+                "admin-login.html";
+
+            return;
+        }
+
+        if (!response.ok) {
+            throw new Error(
+                `Users request failed: ${response.status}`
+            );
+        }
+
+        const data =
+            await response.json();
+
+        // Handle:
+        // [users]
+        // OR { users: [...] }
+
+        if (Array.isArray(data)) {
+            allUsers = data;
+        } else if (Array.isArray(data.users)) {
+            allUsers = data.users;
+        } else {
+            allUsers = [];
+        }
+
+        renderUsersTable(
+            get("users-search")?.value || ""
+        );
+
+    } catch (error) {
+
+        console.error(
+            "Users error:",
+            error
+        );
+
+        showToast(
+            "Could not load users.",
+            "error"
+        );
     }
 }
 
 // =====================================================
-// DASHBOARD PREVIEW (5 latest posts)
+// DASHBOARD PREVIEW
 // =====================================================
 
 function renderDashboardPreview() {
-    const container = document.getElementById("dashboard-posts-preview");
-    if (!container) return;
 
-    const recent = [...allAdminPosts].slice(0, 5);
-    if (recent.length === 0) {
-        container.innerHTML = `<p style="padding:1.5rem;color:var(--text-muted);">No posts yet.</p>`;
+    const container =
+        get("dashboard-posts-preview");
+
+    if (!container) {
+        return;
+    }
+
+    const recentPosts =
+        [...allAdminPosts]
+            .sort(
+                (a, b) =>
+                    new Date(b.createdAt) -
+                    new Date(a.createdAt)
+            )
+            .slice(0, 5);
+
+    if (recentPosts.length === 0) {
+
+        container.innerHTML = `
+            <p style="padding:1.5rem;color:var(--text-muted);">
+                No posts yet.
+            </p>
+        `;
+
         return;
     }
 
     container.innerHTML = `
         <div style="overflow-x:auto;">
-        <table class="admin-table">
-            <thead><tr>
-                <th>Title</th><th>Author</th><th>Category</th><th>Status</th><th>Actions</th>
-            </tr></thead>
-            <tbody>
-                ${recent.map(p => `
+            <table class="admin-table">
+
+                <thead>
                     <tr>
-                        <td><strong>${escapeHTML(p.title)}</strong></td>
-                        <td>${escapeHTML(p.author)}</td>
-                        <td>${escapeHTML(p.category)}</td>
-                        <td><span class="badge-status ${p.status || "active"}">${(p.status || "active").toUpperCase()}</span></td>
-                        <td>
-                            <button class="btn-table-action btn-view" data-id="${p._id}" type="button">View</button>
-                            <button class="btn-table-action btn-delete" data-id="${p._id}" type="button">Delete</button>
-                        </td>
+                        <th>Title</th>
+                        <th>Author</th>
+                        <th>Category</th>
+                        <th>Status</th>
+                        <th>Actions</th>
                     </tr>
-                `).join("")}
-            </tbody>
-        </table>
+                </thead>
+
+                <tbody>
+
+                    ${recentPosts.map((post) => {
+
+        const status =
+            post.status || "active";
+
+        return `
+                            <tr>
+
+                                <td>
+                                    <strong>
+                                        ${escapeHTML(
+            post.title
+        )}
+                                    </strong>
+                                </td>
+
+                                <td>
+                                    ${escapeHTML(
+            post.author
+        )}
+                                </td>
+
+                                <td>
+                                    ${escapeHTML(
+            post.category
+        )}
+                                </td>
+
+                                <td>
+                                    <span class="badge-status ${status}">
+                                        ${status.toUpperCase()}
+                                    </span>
+                                </td>
+
+                                <td>
+
+                                    <button
+                                        class="btn-table-action btn-view"
+                                        data-id="${post._id}"
+                                        type="button">
+                                        View
+                                    </button>
+
+                                    <button
+                                        class="btn-table-action btn-delete"
+                                        data-id="${post._id}"
+                                        type="button">
+                                        Delete
+                                    </button>
+
+                                </td>
+
+                            </tr>
+                        `;
+
+    }).join("")}
+
+                </tbody>
+
+            </table>
         </div>
     `;
 
@@ -266,46 +801,150 @@ function renderDashboardPreview() {
 // POSTS TABLE
 // =====================================================
 
-function renderPostsTable(filterQuery = "") {
-    const tbody = document.getElementById("posts-tbody");
-    if (!tbody) return;
+function renderPostsTable(searchTerm = "") {
 
-    let posts = [...allAdminPosts];
-    if (filterQuery) {
-        const q = filterQuery.toLowerCase();
-        posts = posts.filter(p =>
-            (p.title || "").toLowerCase().includes(q) ||
-            (p.author || "").toLowerCase().includes(q) ||
-            (p.category || "").toLowerCase().includes(q)
-        );
-    }
+    const tbody =
+        get("posts-tbody");
 
-    if (posts.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--text-muted);">No posts found.</td></tr>`;
+    if (!tbody) {
         return;
     }
 
-    tbody.innerHTML = posts.map(p => {
-        const date = p.createdAt ? new Date(p.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" }) : "—";
-        const status = p.status || "active";
-        return `
+    const query =
+        searchTerm
+            .toLowerCase()
+            .trim();
+
+    let posts =
+        [...allAdminPosts];
+
+    if (query) {
+
+        posts =
+            posts.filter((post) => {
+
+                return (
+                    (post.title || "")
+                        .toLowerCase()
+                        .includes(query) ||
+
+                    (post.author || "")
+                        .toLowerCase()
+                        .includes(query) ||
+
+                    (post.category || "")
+                        .toLowerCase()
+                        .includes(query)
+                );
+
+            });
+    }
+
+    if (posts.length === 0) {
+
+        tbody.innerHTML = `
             <tr>
-                <td><strong>${escapeHTML(p.title)}</strong></td>
-                <td>${escapeHTML(p.author)}</td>
-                <td><span style="background:var(--accent-light);color:var(--accent-primary);padding:0.2rem 0.6rem;border-radius:999px;font-size:0.75rem;font-weight:700;">${escapeHTML(p.category)}</span></td>
-                <td>${p.likes || 0}</td>
-                <td>${(p.comments || []).length}</td>
-                <td><span class="badge-status ${status}">${status.toUpperCase()}</span></td>
-                <td>${date}</td>
-                <td>
-                    <button class="btn-table-action btn-view" data-id="${p._id}" type="button">View</button>
-                    <button class="btn-table-action btn-approve" data-id="${p._id}" type="button">Approve</button>
-                    <button class="btn-table-action btn-flag" data-id="${p._id}" type="button">Flag</button>
-                    <button class="btn-table-action btn-delete" data-id="${p._id}" type="button">Delete</button>
+                <td colspan="8"
+                    style="text-align:center;padding:2rem;color:var(--text-muted);">
+                    No posts found.
                 </td>
             </tr>
         `;
-    }).join("");
+
+        return;
+    }
+
+    tbody.innerHTML =
+        posts.map((post) => {
+
+            const status =
+                post.status || "active";
+
+            const date =
+                post.createdAt
+                    ? new Date(
+                        post.createdAt
+                    ).toLocaleDateString(
+                        "en-IN",
+                        {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric"
+                        }
+                    )
+                    : "—";
+
+            return `
+                <tr>
+
+                    <td>
+                        <strong>
+                            ${escapeHTML(post.title)}
+                        </strong>
+                    </td>
+
+                    <td>
+                        ${escapeHTML(post.author)}
+                    </td>
+
+                    <td>
+                        ${escapeHTML(post.category)}
+                    </td>
+
+                    <td>
+                        ${post.likes || 0}
+                    </td>
+
+                    <td>
+                        ${(post.comments || []).length}
+                    </td>
+
+                    <td>
+                        <span class="badge-status ${status}">
+                            ${status.toUpperCase()}
+                        </span>
+                    </td>
+
+                    <td>
+                        ${date}
+                    </td>
+
+                    <td>
+
+                        <button
+                            class="btn-table-action btn-view"
+                            data-id="${post._id}"
+                            type="button">
+                            View
+                        </button>
+
+                        <button
+                            class="btn-table-action btn-approve"
+                            data-id="${post._id}"
+                            type="button">
+                            Approve
+                        </button>
+
+                        <button
+                            class="btn-table-action btn-flag"
+                            data-id="${post._id}"
+                            type="button">
+                            Flag
+                        </button>
+
+                        <button
+                            class="btn-table-action btn-delete"
+                            data-id="${post._id}"
+                            type="button">
+                            Delete
+                        </button>
+
+                    </td>
+
+                </tr>
+            `;
+
+        }).join("");
 
     attachTableActions(tbody);
 }
@@ -314,177 +953,535 @@ function renderPostsTable(filterQuery = "") {
 // USERS TABLE
 // =====================================================
 
-function renderUsersTable(filterQuery = "") {
-    const tbody = document.getElementById("users-tbody");
-    if (!tbody) return;
+function renderUsersTable(searchTerm = "") {
 
-    let users = [...allUsers].filter(u => u.role !== "admin");
+    const tbody =
+        get("users-tbody");
 
-    if (filterQuery) {
-        const q = filterQuery.toLowerCase();
-        users = users.filter(u =>
-            (u.name || "").toLowerCase().includes(q) ||
-            (u.email || "").toLowerCase().includes(q)
+    if (!tbody) {
+        return;
+    }
+
+    const query =
+        searchTerm
+            .toLowerCase()
+            .trim();
+
+    let users =
+        allUsers.filter(
+            user =>
+                user.role !== "admin"
         );
+
+    if (query) {
+
+        users =
+            users.filter((user) => {
+
+                return (
+                    (user.name || "")
+                        .toLowerCase()
+                        .includes(query) ||
+
+                    (user.email || "")
+                        .toLowerCase()
+                        .includes(query)
+                );
+
+            });
     }
 
     if (users.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--text-muted);">No students found.</td></tr>`;
-        return;
-    }
 
-    tbody.innerHTML = users.map(u => {
-        const date = u.createdAt ? new Date(u.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—";
-        return `
+        tbody.innerHTML = `
             <tr>
-                <td><strong>${escapeHTML(u.name)}</strong></td>
-                <td>${escapeHTML(u.email)}</td>
-                <td><span class="badge-status approved">${u.role.toUpperCase()}</span></td>
-                <td>${date}</td>
-                <td><span class="badge-status ${u.isFlagged ? "flagged" : "approved"}">${u.isFlagged ? "FLAGGED" : "ACTIVE"}</span></td>
-                <td>
-                    <button class="btn-table-action ${u.isFlagged ? "btn-approve" : "btn-flag"}" data-user-id="${u._id}" data-flagged="${u.isFlagged}" type="button">
-                        ${u.isFlagged ? "Unflag" : "Flag"}
-                    </button>
+                <td colspan="6"
+                    style="text-align:center;padding:2rem;color:var(--text-muted);">
+                    No students found.
                 </td>
             </tr>
         `;
-    }).join("");
 
-    // Flag/Unflag users
-    tbody.querySelectorAll("[data-user-id]").forEach(btn => {
-        btn.addEventListener("click", async () => {
-            const userId = btn.dataset.userId;
-            try {
-                const res = await adminFetch(`${API}/api/admin/users/${userId}/flag`, { method: "PATCH" });
-                if (!res.ok) throw new Error("Failed");
-                const data = await res.json();
-                showToast(data.message, "success");
-                await fetchUsers();
-                renderUsersTable(document.getElementById("users-search")?.value || "");
-            } catch {
-                showToast("Failed to update user status.", "error");
-            }
-        });
-    });
-}
-
-// =====================================================
-// FLAGGED POSTS TABLE
-// =====================================================
-
-function renderFlaggedTable() {
-    const tbody = document.getElementById("flagged-tbody");
-    if (!tbody) return;
-
-    const flagged = allAdminPosts.filter(p => p.status === "flagged");
-
-    if (flagged.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;padding:2rem;color:var(--text-muted);">No flagged posts. Community looks clean! ✅</td></tr>`;
         return;
     }
 
-    tbody.innerHTML = flagged.map(p => `
-        <tr>
-            <td><strong>${escapeHTML(p.title)}</strong></td>
-            <td>${escapeHTML(p.author)}</td>
-            <td>${escapeHTML(p.category)}</td>
-            <td>
-                <button class="btn-table-action btn-approve" data-id="${p._id}" type="button">Approve</button>
-                <button class="btn-table-action btn-delete" data-id="${p._id}" type="button">Delete</button>
-            </td>
-        </tr>
-    `).join("");
+    tbody.innerHTML =
+        users.map((user) => {
+
+            const date =
+                user.createdAt
+                    ? new Date(
+                        user.createdAt
+                    ).toLocaleDateString(
+                        "en-IN",
+                        {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric"
+                        }
+                    )
+                    : "—";
+
+            const flagged =
+                user.isFlagged === true;
+
+            return `
+                <tr>
+
+                    <td>
+                        <strong>
+                            ${escapeHTML(user.name)}
+                        </strong>
+                    </td>
+
+                    <td>
+                        ${escapeHTML(user.email)}
+                    </td>
+
+                    <td>
+                        Student
+                    </td>
+
+                    <td>
+                        ${date}
+                    </td>
+
+                    <td>
+
+                        <span class="badge-status ${flagged
+                    ? "flagged"
+                    : "approved"
+                }">
+
+                            ${flagged
+                    ? "FLAGGED"
+                    : "ACTIVE"
+                }
+
+                        </span>
+
+                    </td>
+
+                    <td>
+
+                        <button
+                            class="btn-table-action ${flagged
+                    ? "btn-approve"
+                    : "btn-flag"
+                }"
+                            data-user-id="${user._id}"
+                            type="button">
+
+                            ${flagged
+                    ? "Unflag"
+                    : "Flag"
+                }
+
+                        </button>
+
+                    </td>
+
+                </tr>
+            `;
+
+        }).join("");
+
+    tbody
+        .querySelectorAll("[data-user-id]")
+        .forEach((button) => {
+
+            button.addEventListener(
+                "click",
+                async () => {
+
+                    await toggleUserFlag(
+                        button.dataset.userId
+                    );
+
+                }
+            );
+
+        });
+}
+
+// =====================================================
+// TOGGLE USER FLAG
+// =====================================================
+
+async function toggleUserFlag(userId) {
+
+    try {
+
+        const response =
+            await adminFetch(
+                `${API}/api/admin/users/${userId}/flag`,
+                {
+                    method: "PATCH"
+                }
+            );
+
+        if (!response.ok) {
+            throw new Error(
+                "Failed to update user"
+            );
+        }
+
+        const data =
+            await response.json();
+
+        showToast(
+            data.message ||
+            "User status updated.",
+            "success"
+        );
+
+        await fetchUsers();
+
+    } catch (error) {
+
+        console.error(
+            "User flag error:",
+            error
+        );
+
+        showToast(
+            "Failed to update user.",
+            "error"
+        );
+    }
+}
+
+// =====================================================
+// FLAGGED POSTS
+// =====================================================
+
+function renderFlaggedTable() {
+
+    const tbody =
+        get("flagged-tbody");
+
+    if (!tbody) {
+        return;
+    }
+
+    const flaggedPosts =
+        allAdminPosts.filter(
+            post =>
+                post.status === "flagged"
+        );
+
+    if (flaggedPosts.length === 0) {
+
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="4"
+                    style="text-align:center;padding:2rem;color:var(--text-muted);">
+                    No flagged posts. Community looks clean! ✅
+                </td>
+            </tr>
+        `;
+
+        return;
+    }
+
+    tbody.innerHTML =
+        flaggedPosts.map((post) => {
+
+            return `
+                <tr>
+
+                    <td>
+                        <strong>
+                            ${escapeHTML(post.title)}
+                        </strong>
+                    </td>
+
+                    <td>
+                        ${escapeHTML(post.author)}
+                    </td>
+
+                    <td>
+                        ${escapeHTML(post.category)}
+                    </td>
+
+                    <td>
+
+                        <button
+                            class="btn-table-action btn-approve"
+                            data-id="${post._id}"
+                            type="button">
+                            Approve
+                        </button>
+
+                        <button
+                            class="btn-table-action btn-delete"
+                            data-id="${post._id}"
+                            type="button">
+                            Delete
+                        </button>
+
+                    </td>
+
+                </tr>
+            `;
+
+        }).join("");
 
     attachTableActions(tbody);
 }
 
 // =====================================================
-// SHARED TABLE ACTION HANDLERS
+// TABLE ACTIONS
 // =====================================================
 
 function attachTableActions(container) {
+
     // VIEW
-    container.querySelectorAll(".btn-view").forEach(btn => {
-        btn.addEventListener("click", () => {
-            const post = allAdminPosts.find(p => p._id === btn.dataset.id);
-            if (!post) return;
-            openPostModal(post);
+    container
+        .querySelectorAll(".btn-view")
+        .forEach((button) => {
+
+            button.addEventListener(
+                "click",
+                () => {
+
+                    const post =
+                        allAdminPosts.find(
+                            item =>
+                                String(item._id) ===
+                                String(button.dataset.id)
+                        );
+
+                    if (post) {
+                        openPostModal(post);
+                    }
+
+                }
+            );
+
         });
-    });
 
     // APPROVE
-    container.querySelectorAll(".btn-approve").forEach(btn => {
-        btn.addEventListener("click", () => updatePostStatus(btn.dataset.id, "approved"));
-    });
+    container
+        .querySelectorAll(".btn-approve")
+        .forEach((button) => {
+
+            button.addEventListener(
+                "click",
+                () => {
+
+                    updatePostStatus(
+                        button.dataset.id,
+                        "approved"
+                    );
+
+                }
+            );
+
+        });
 
     // FLAG
-    container.querySelectorAll(".btn-flag").forEach(btn => {
-        btn.addEventListener("click", () => updatePostStatus(btn.dataset.id, "flagged"));
-    });
+    container
+        .querySelectorAll(".btn-flag")
+        .forEach((button) => {
+
+            button.addEventListener(
+                "click",
+                () => {
+
+                    updatePostStatus(
+                        button.dataset.id,
+                        "flagged"
+                    );
+
+                }
+            );
+
+        });
 
     // DELETE
-    container.querySelectorAll(".btn-delete").forEach(btn => {
-        btn.addEventListener("click", () => deletePost(btn.dataset.id));
-    });
+    container
+        .querySelectorAll(".btn-delete")
+        .forEach((button) => {
+
+            button.addEventListener(
+                "click",
+                () => {
+
+                    deletePost(
+                        button.dataset.id
+                    );
+
+                }
+            );
+
+        });
 }
 
 // =====================================================
-// POST STATUS UPDATE (Admin API)
+// UPDATE POST STATUS
 // =====================================================
 
-async function updatePostStatus(postId, status) {
+async function updatePostStatus(
+    postId,
+    status
+) {
+
     try {
-        const res = await adminFetch(`${API}/api/admin/posts/${postId}/status`, {
-            method: "PATCH",
-            body: JSON.stringify({ status })
-        });
 
-        if (!res.ok) throw new Error("Failed to update status");
+        const response =
+            await adminFetch(
+                `${API}/api/admin/posts/${postId}/status`,
+                {
+                    method: "PATCH",
+                    body: JSON.stringify({
+                        status
+                    })
+                }
+            );
 
-        // Update local data
-        const idx = allAdminPosts.findIndex(p => p._id === postId);
-        if (idx > -1) allAdminPosts[idx].status = status;
+        if (!response.ok) {
 
-        showToast(`Post ${status === "flagged" ? "flagged" : "approved"} successfully.`, "success");
+            const errorText =
+                await response.text();
 
-        // Re-render current view
-        if (currentTab === "posts") renderPostsTable(document.getElementById("posts-search")?.value || "");
-        else if (currentTab === "flagged") renderFlaggedTable();
-        else renderDashboardPreview();
+            console.error(
+                "Server response:",
+                errorText
+            );
+
+            throw new Error(
+                "Failed to update post"
+            );
+        }
+
+        const index =
+            allAdminPosts.findIndex(
+                post =>
+                    String(post._id) ===
+                    String(postId)
+            );
+
+        if (index !== -1) {
+
+            allAdminPosts[index].status =
+                status;
+        }
+
+        showToast(
+            status === "flagged"
+                ? "Post flagged successfully."
+                : "Post approved successfully.",
+            "success"
+        );
+
+        renderDashboardPreview();
+
+        renderPostsTable(
+            get("posts-search")?.value || ""
+        );
+
+        renderFlaggedTable();
 
         await fetchStats();
 
-    } catch (err) {
-        console.error("Status update error:", err);
-        showToast("Failed to update post status.", "error");
+    } catch (error) {
+
+        console.error(
+            "Status update error:",
+            error
+        );
+
+        showToast(
+            "Failed to update post.",
+            "error"
+        );
     }
 }
 
 // =====================================================
-// DELETE POST (Admin API - permanent MongoDB delete)
+// DELETE POST
 // =====================================================
 
 async function deletePost(postId) {
-    const post = allAdminPosts.find(p => p._id === postId);
-    if (!confirm(`Delete "${post?.title || "this post"}"? This is permanent.`)) return;
+
+    const post =
+        allAdminPosts.find(
+            item =>
+                String(item._id) ===
+                String(postId)
+        );
+
+    const title =
+        post?.title || "this post";
+
+    const confirmed =
+        window.confirm(
+            `Delete "${title}"?\n\nThis cannot be undone.`
+        );
+
+    if (!confirmed) {
+        return;
+    }
 
     try {
-        const res = await adminFetch(`${API}/api/admin/posts/${postId}`, { method: "DELETE" });
-        if (!res.ok) throw new Error("Failed to delete");
 
-        allAdminPosts = allAdminPosts.filter(p => p._id !== postId);
-        showToast("Post permanently deleted from MongoDB.", "success");
+        const response =
+            await adminFetch(
+                `${API}/api/admin/posts/${postId}`,
+                {
+                    method: "DELETE"
+                }
+            );
 
-        if (currentTab === "posts") renderPostsTable(document.getElementById("posts-search")?.value || "");
-        else if (currentTab === "flagged") renderFlaggedTable();
-        else renderDashboardPreview();
+        if (!response.ok) {
+
+            const errorText =
+                await response.text();
+
+            console.error(
+                "Delete response:",
+                errorText
+            );
+
+            throw new Error(
+                "Failed to delete post"
+            );
+        }
+
+        allAdminPosts =
+            allAdminPosts.filter(
+                post =>
+                    String(post._id) !==
+                    String(postId)
+            );
+
+        showToast(
+            "Post deleted successfully.",
+            "success"
+        );
+
+        renderDashboardPreview();
+
+        renderPostsTable(
+            get("posts-search")?.value || ""
+        );
+
+        renderFlaggedTable();
 
         await fetchStats();
 
-    } catch (err) {
-        console.error("Delete error:", err);
-        showToast("Failed to delete post.", "error");
+    } catch (error) {
+
+        console.error(
+            "Delete error:",
+            error
+        );
+
+        showToast(
+            "Failed to delete post.",
+            "error"
+        );
     }
 }
 
@@ -492,61 +1489,324 @@ async function deletePost(postId) {
 // POST PREVIEW MODAL
 // =====================================================
 
-const adminModal = document.getElementById("admin-modal");
-const adminModalClose = document.getElementById("admin-modal-close");
-
 function openPostModal(post) {
-    document.getElementById("admin-modal-title").textContent = post.title;
-    document.getElementById("admin-modal-body").innerHTML = `
-        <table style="width:100%;border-collapse:collapse;margin-bottom:1rem;">
-            <tr><td style="padding:0.4rem 0;color:var(--text-muted);font-size:0.8rem;width:100px;">Author</td><td><strong>${escapeHTML(post.author)}</strong></td></tr>
-            <tr><td style="padding:0.4rem 0;color:var(--text-muted);font-size:0.8rem;">Email</td><td>${escapeHTML(post.authorEmail || "—")}</td></tr>
-            <tr><td style="padding:0.4rem 0;color:var(--text-muted);font-size:0.8rem;">Category</td><td>${escapeHTML(post.category)}</td></tr>
-            <tr><td style="padding:0.4rem 0;color:var(--text-muted);font-size:0.8rem;">Likes</td><td>${post.likes || 0}</td></tr>
-            <tr><td style="padding:0.4rem 0;color:var(--text-muted);font-size:0.8rem;">Comments</td><td>${(post.comments || []).length}</td></tr>
-            <tr><td style="padding:0.4rem 0;color:var(--text-muted);font-size:0.8rem;">Status</td><td><span class="badge-status ${post.status || "active"}">${(post.status || "active").toUpperCase()}</span></td></tr>
-            <tr><td style="padding:0.4rem 0;color:var(--text-muted);font-size:0.8rem;">Posted</td><td>${post.createdAt ? new Date(post.createdAt).toLocaleString() : "—"}</td></tr>
-        </table>
-        <hr style="margin:1rem 0;border:none;border-top:1px solid var(--border-color);">
-        <p style="white-space:pre-line;font-size:0.9rem;color:var(--text-secondary);">${escapeHTML(post.content)}</p>
-        <div style="margin-top:1.5rem;display:flex;gap:0.5rem;">
-            <button class="btn-table-action btn-approve" onclick="updatePostStatus('${post._id}','approved')" type="button">Approve</button>
-            <button class="btn-table-action btn-flag" onclick="updatePostStatus('${post._id}','flagged')" type="button">Flag</button>
-            <button class="btn-table-action btn-delete" onclick="deletePost('${post._id}')" type="button">Delete</button>
+
+    const modal =
+        get("admin-modal");
+
+    const title =
+        get("admin-modal-title");
+
+    const body =
+        get("admin-modal-body");
+
+    if (!modal || !title || !body) {
+        return;
+    }
+
+    title.textContent =
+        post.title || "Post Preview";
+
+    body.innerHTML = `
+
+        <div style="line-height:1.7;">
+
+            <p>
+                <strong>Author:</strong>
+                ${escapeHTML(post.author)}
+            </p>
+
+            <p>
+                <strong>Email:</strong>
+                ${escapeHTML(
+        post.authorEmail || "—"
+    )}
+            </p>
+
+            <p>
+                <strong>Category:</strong>
+                ${escapeHTML(post.category)}
+            </p>
+
+            <p>
+                <strong>Likes:</strong>
+                ${post.likes || 0}
+            </p>
+
+            <p>
+                <strong>Comments:</strong>
+                ${(post.comments || []).length}
+            </p>
+
+            <p>
+                <strong>Status:</strong>
+                ${escapeHTML(
+        post.status || "active"
+    )}
+            </p>
+
+            <hr>
+
+            <p style="white-space:pre-line;">
+                ${escapeHTML(post.content)}
+            </p>
+
+            <div
+                style="
+                    margin-top:1rem;
+                    display:flex;
+                    gap:0.5rem;
+                    flex-wrap:wrap;
+                "
+            >
+
+                <button
+                    class="btn-table-action btn-approve"
+                    id="modal-approve-btn"
+                    type="button">
+                    Approve
+                </button>
+
+                <button
+                    class="btn-table-action btn-flag"
+                    id="modal-flag-btn"
+                    type="button">
+                    Flag
+                </button>
+
+                <button
+                    class="btn-table-action btn-delete"
+                    id="modal-delete-btn"
+                    type="button">
+                    Delete
+                </button>
+
+            </div>
+
         </div>
     `;
-    adminModal?.classList.add("show");
+
+    get("modal-approve-btn")
+        ?.addEventListener(
+            "click",
+            async () => {
+
+                await updatePostStatus(
+                    post._id,
+                    "approved"
+                );
+
+                modal.classList.remove(
+                    "show"
+                );
+
+            }
+        );
+
+    get("modal-flag-btn")
+        ?.addEventListener(
+            "click",
+            async () => {
+
+                await updatePostStatus(
+                    post._id,
+                    "flagged"
+                );
+
+                modal.classList.remove(
+                    "show"
+                );
+
+            }
+        );
+
+    get("modal-delete-btn")
+        ?.addEventListener(
+            "click",
+            async () => {
+
+                await deletePost(
+                    post._id
+                );
+
+                modal.classList.remove(
+                    "show"
+                );
+
+            }
+        );
+
+    modal.classList.add("show");
 }
 
-adminModalClose?.addEventListener("click", () => adminModal?.classList.remove("show"));
-adminModal?.addEventListener("click", (e) => { if (e.target === adminModal) adminModal.classList.remove("show"); });
-
 // =====================================================
-// SEARCH FILTERS
+// MODAL CONTROLS
 // =====================================================
 
-document.getElementById("posts-search")?.addEventListener("input", (e) => {
-    renderPostsTable(e.target.value);
-});
+function setupModal() {
 
-document.getElementById("users-search")?.addEventListener("input", (e) => {
-    renderUsersTable(e.target.value);
-});
+    const modal =
+        get("admin-modal");
 
-// Refresh button
-document.getElementById("refresh-btn")?.addEventListener("click", () => {
-    fetchStats();
-    fetchAdminPosts();
-    fetchUsers();
-    showToast("Dashboard refreshed.", "info");
-});
+    const closeButton =
+        get("admin-modal-close");
+
+    if (!modal) {
+        return;
+    }
+
+    closeButton?.addEventListener(
+        "click",
+        () => {
+            modal.classList.remove("show");
+        }
+    );
+
+    modal.addEventListener(
+        "click",
+        (event) => {
+
+            if (event.target === modal) {
+                modal.classList.remove("show");
+            }
+
+        }
+    );
+
+    document.addEventListener(
+        "keydown",
+        (event) => {
+
+            if (event.key === "Escape") {
+                modal.classList.remove(
+                    "show"
+                );
+            }
+
+        }
+    );
+}
 
 // =====================================================
-// INIT
+// SEARCH
 // =====================================================
 
-document.addEventListener("DOMContentLoaded", async () => {
-    await fetchStats();
-    await fetchAdminPosts();
-    await fetchUsers();
-});
+function setupSearch() {
+
+    const postsSearch =
+        get("posts-search");
+
+    const usersSearch =
+        get("users-search");
+
+    postsSearch?.addEventListener(
+        "input",
+        (event) => {
+
+            renderPostsTable(
+                event.target.value
+            );
+
+        }
+    );
+
+    usersSearch?.addEventListener(
+        "input",
+        (event) => {
+
+            renderUsersTable(
+                event.target.value
+            );
+
+        }
+    );
+}
+
+// =====================================================
+// REFRESH
+// =====================================================
+
+function setupRefresh() {
+
+    const refreshButton =
+        get("refresh-btn");
+
+    if (!refreshButton) {
+        return;
+    }
+
+    refreshButton.addEventListener(
+        "click",
+        async () => {
+
+            refreshButton.disabled = true;
+
+            showToast(
+                "Refreshing dashboard...",
+                "info"
+            );
+
+            try {
+
+                await Promise.all([
+                    fetchStats(),
+                    fetchAdminPosts(),
+                    fetchUsers()
+                ]);
+
+                showToast(
+                    "Dashboard refreshed.",
+                    "success"
+                );
+
+            } finally {
+
+                refreshButton.disabled = false;
+
+            }
+
+        }
+    );
+}
+
+// =====================================================
+// INITIALIZE DASHBOARD
+// =====================================================
+
+async function initAdminDashboard() {
+
+    console.log(
+        "SYNAPSE Admin Dashboard initialized."
+    );
+
+    initTheme();
+
+    setupThemeToggle();
+
+    setupAdminProfile();
+
+    setupProfileDropdown();
+
+    setupLogout();
+
+    setupBackToCommunity();
+
+    setupTabs();
+
+    setupModal();
+
+    setupSearch();
+
+    setupRefresh();
+
+    // Load dashboard data
+    await Promise.all([
+        fetchStats(),
+        fetchAdminPosts(),
+        fetchUsers()
+    ]);
+
+    console.log(
+        "SYNAPSE Admin Dashboard data loaded."
+    );
+}
