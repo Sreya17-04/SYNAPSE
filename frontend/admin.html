@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SYNAPSE - Admin Moderation Panel</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="admin.css">
+</head>
+
+<body class="admin-body">
+
+    <!-- ================= ADMIN NAVBAR ================= -->
+    <header class="navbar">
+        <div class="logo">
+            <div class="logo-badge">S</div>
+            <div class="logo-text-container">
+                <span class="logo-title">SYNAPSE ADMIN</span>
+                <span class="logo-subtitle">Moderation Dashboard</span>
+            </div>
+        </div>
+
+        <nav class="nav-links">
+            <a href="index.html" class="nav-link">← Back to Community</a>
+        </nav>
+
+        <div class="nav-right">
+            <button class="icon-btn" id="theme-toggle" type="button" aria-label="Toggle dark/light mode">
+                <span id="theme-icon">🌙</span>
+            </button>
+            <div class="profile-avatar-btn" style="background: linear-gradient(135deg, #ef4444, #f59e0b);">
+                A
+            </div>
+        </div>
+    </header>
+
+    <!-- ================= ADMIN LAYOUT ================= -->
+    <div class="admin-layout">
+        <!-- SIDEBAR -->
+        <aside class="admin-sidebar">
+            <button class="admin-nav-item active" id="tab-dashboard" type="button">
+                <span>📊</span> Dashboard
+            </button>
+            <button class="admin-nav-item" id="tab-users" type="button">
+                <span>👥</span> Users
+            </button>
+            <button class="admin-nav-item" id="tab-posts" type="button">
+                <span>📝</span> Posts Management
+            </button>
+            <button class="admin-nav-item" id="tab-reports" type="button">
+                <span>⚠️</span> Reports (2)
+            </button>
+            <button class="admin-nav-item" id="tab-moderation" type="button">
+                <span>🛡️</span> Moderation Rules
+            </button>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <main class="admin-content">
+            <div class="admin-header-title">
+                <h1>Community Overview & Moderation</h1>
+                <p>Manage discussions, review flagged reports, and delete non-compliant posts.</p>
+            </div>
+
+            <!-- METRIC STATS -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-info">
+                        <h4>Total Registered Users</h4>
+                        <div class="stat-value" id="stat-total-users">1,240</div>
+                    </div>
+                    <div class="stat-icon-wrapper">👥</div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-info">
+                        <h4>Total API Posts</h4>
+                        <div class="stat-value" id="stat-total-posts">0</div>
+                    </div>
+                    <div class="stat-icon-wrapper">📝</div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-info">
+                        <h4>Pending Reports</h4>
+                        <div class="stat-value" style="color: var(--warning);">2</div>
+                    </div>
+                    <div class="stat-icon-wrapper" style="background: #fef3c7; color: var(--warning);">⚠️</div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-info">
+                        <h4>Active Discussions</h4>
+                        <div class="stat-value" id="stat-active-discussions">356</div>
+                    </div>
+                    <div class="stat-icon-wrapper">💬</div>
+                </div>
+            </div>
+
+            <!-- POSTS MANAGEMENT TABLE -->
+            <div class="table-card">
+                <div class="table-card-header">
+                    <h2>Community Posts Moderation</h2>
+                    <input type="text" id="admin-search-input" class="admin-search" placeholder="Search table...">
+                </div>
+
+                <div style="overflow-x: auto;">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Title</th>
+                                <th>Author</th>
+                                <th>Category</th>
+                                <th>Date</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-posts-tbody">
+                            <!-- Table rows injected via admin.js -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- PREVIEW MODAL -->
+    <div class="modal-overlay" id="admin-modal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3 id="admin-modal-title">Post Preview</h3>
+                <button id="admin-modal-close" class="modal-close-btn" type="button">&times;</button>
+            </div>
+            <div class="modal-body" id="admin-modal-body">
+                <!-- Preview details injected here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST CONTAINER -->
+    <div id="toast-container"></div>
+
+    <script src="admin.js"></script>
+</body>
+
+</html>

@@ -1,1424 +1,644 @@
 // =====================================================
-// DEPTCONNECT - SCRIPT.JS
+// SYNAPSE - DEPARTMENT COMMUNITY PLATFORM
+// Core Frontend JavaScript Engine
 // =====================================================
 
+const API_URL = "http://localhost:5000/api/posts";
 
-// =====================================================
-// BACKEND API
-// =====================================================
+// Local Storage Keys
+const STORAGE_KEYS = {
+    THEME: "synapse_theme",
+    LIKES: "synapse_liked_posts",
+    LIKE_COUNTS: "synapse_like_counts",
+    SAVED: "synapse_saved_posts",
+    COMMENTS: "synapse_post_comments"
+};
 
-const API_URL =
-    "http://localhost:5000/api/posts";
-
-
-// =====================================================
-// DOM ELEMENTS
-// =====================================================
-
-const postsContainer =
-    document.getElementById("posts-container");
-
-const postModal =
-    document.getElementById("post-modal");
-
-const createPostBtn =
-    document.getElementById("create-post-btn");
-
-const closeModalBtn =
-    document.getElementById("close-modal");
-
-const cancelPostBtn =
-    document.getElementById("cancel-post");
-
-const postForm =
-    document.getElementById("post-form");
-
-const searchInput =
-    document.getElementById("search-input");
-
-const sortSelect =
-    document.getElementById("sort-select");
-
-const categoryButtons =
-    document.querySelectorAll(".category-btn");
-
-const themeToggleBtn =
-    document.getElementById("theme-toggle");
-
-const themeIcon =
-    document.getElementById("theme-icon");
-
-
-// =====================================================
-// APPLICATION DATA
-// =====================================================
-
+// Application State
 let allPosts = [];
-
 let selectedCategory = "All";
+let activeView = "home"; // 'home', 'explore', 'saved', 'myposts'
+let currentSearch = "";
+let currentSort = "latest";
 
+// DOM Elements
+const postsContainer = document.getElementById("posts-container");
+const postModal = document.getElementById("post-modal");
+const createPostBtn = document.getElementById("create-post-btn");
+const heroCreateBtn = document.getElementById("hero-create-btn");
+const quickPostTrigger = document.getElementById("quick-post-trigger");
+const closeModalBtn = document.getElementById("close-modal");
+const cancelPostBtn = document.getElementById("cancel-post");
+const postForm = document.getElementById("post-form");
+const searchInput = document.getElementById("search-input");
+const sortSelect = document.getElementById("sort-select");
+const themeToggleBtn = document.getElementById("theme-toggle");
+const themeIcon = document.getElementById("theme-icon");
+const profileBtn = document.getElementById("profile-btn");
+const profileDropdown = document.getElementById("profile-dropdown");
+const toastContainer = document.getElementById("toast-container");
+const statDiscussions = document.getElementById("stat-discussions");
+
+// Nav Buttons
+const navHome = document.getElementById("nav-home");
+const navExplore = document.getElementById("nav-explore");
+const navSaved = document.getElementById("nav-saved");
+const navMyposts = document.getElementById("nav-myposts");
 
 // =====================================================
-// THEME - LIGHT / DARK MODE
+// UTILITY FUNCTIONS & SANITIZATION
+// =====================================================
+
+/**
+ * Escapes HTML characters to prevent XSS injection
+ */
+function escapeHTML(str) {
+    if (!str) return "";
+    return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+/**
+ * Get category icon mapping
+ */
+function getCategoryIcon(category) {
+    const icons = {
+        Academic: "📚",
+        Placement: "💼",
+        Events: "📢",
+        General: "🌐",
+        Internships: "🚀",
+        Projects: "💻",
+        Other: "📌"
+    };
+    return icons[category] || "💬";
+}
+
+/**
+ * Get user initials from name
+ */
+function getInitials(name) {
+    if (!name) return "U";
+    const parts = name.trim().split(" ");
+    if (parts.length >= 2) {
+        return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return name.slice(0, 2).toUpperCase();
+}
+
+/**
+ * Reusable Toast Notification System
+ */
+function showToast(message, type = "info") {
+    if (!toastContainer) return;
+
+    const toast = document.createElement("div");
+    toast.className = `toast ${type}`;
+
+    let icon = "ℹ️";
+    if (type === "success") icon = "✅";
+    if (type === "error") icon = "⚠️";
+
+    toast.innerHTML = `
+        <span>${icon}</span>
+        <div>${escapeHTML(message)}</div>
+    `;
+
+    toastContainer.appendChild(toast);
+
+    setTimeout(() => {
+        toast.style.opacity = "0";
+        toast.style.transform = "translateX(50px)";
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
+// =====================================================
+// THEME MANAGEMENT (LIGHT / DARK MODE)
 // =====================================================
 
 function initTheme() {
+    const savedTheme = localStorage.getItem(STORAGE_KEYS.THEME);
+    const systemPrefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
 
-    const savedTheme =
-        localStorage.getItem("theme");
-
-    const systemPrefersDark =
-        window.matchMedia(
-            "(prefers-color-scheme: dark)"
-        ).matches;
-
-
-    if (
-        savedTheme === "dark" ||
-        (!savedTheme && systemPrefersDark)
-    ) {
-
+    if (savedTheme === "dark" || (!savedTheme && systemPrefersDark)) {
         setTheme("dark");
-
     } else {
-
         setTheme("light");
-
     }
-
 }
-
 
 function setTheme(theme) {
-
     if (theme === "dark") {
-
-        document.body.classList.add(
-            "dark-mode"
-        );
-
-
-        if (themeIcon) {
-
-            themeIcon.textContent = "☀️";
-
-        }
-
-
-        if (themeToggleBtn) {
-
-            themeToggleBtn.setAttribute(
-                "title",
-                "Switch to Light Mode"
-            );
-
-        }
-
-
-        localStorage.setItem(
-            "theme",
-            "dark"
-        );
-
-
+        document.body.classList.add("dark-mode");
+        if (themeIcon) themeIcon.textContent = "☀️";
+        if (themeToggleBtn) themeToggleBtn.setAttribute("title", "Switch to Light Mode");
+        localStorage.setItem(STORAGE_KEYS.THEME, "dark");
     } else {
-
-        document.body.classList.remove(
-            "dark-mode"
-        );
-
-
-        if (themeIcon) {
-
-            themeIcon.textContent = "🌙";
-
-        }
-
-
-        if (themeToggleBtn) {
-
-            themeToggleBtn.setAttribute(
-                "title",
-                "Switch to Dark Mode"
-            );
-
-        }
-
-
-        localStorage.setItem(
-            "theme",
-            "light"
-        );
-
+        document.body.classList.remove("dark-mode");
+        if (themeIcon) themeIcon.textContent = "🌙";
+        if (themeToggleBtn) themeToggleBtn.setAttribute("title", "Switch to Dark Mode");
+        localStorage.setItem(STORAGE_KEYS.THEME, "light");
     }
-
 }
-
 
 if (themeToggleBtn) {
-
-    themeToggleBtn.addEventListener(
-        "click",
-        function () {
-
-            const isDark =
-                document.body.classList.contains(
-                    "dark-mode"
-                );
-
-
-            setTheme(
-                isDark
-                    ? "light"
-                    : "dark"
-            );
-
-        }
-    );
-
+    themeToggleBtn.addEventListener("click", () => {
+        const isDark = document.body.classList.contains("dark-mode");
+        setTheme(isDark ? "light" : "dark");
+    });
 }
-
 
 initTheme();
 
+// =====================================================
+// PROFILE DROPDOWN
+// =====================================================
+
+if (profileBtn && profileDropdown) {
+    profileBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        profileDropdown.classList.toggle("show");
+    });
+
+    document.addEventListener("click", (e) => {
+        if (!profileDropdown.contains(e.target) && e.target !== profileBtn) {
+            profileDropdown.classList.remove("show");
+        }
+    });
+
+    document.getElementById("menu-my-posts")?.addEventListener("click", () => {
+        setActiveNav(navMyposts, "myposts");
+        profileDropdown.classList.remove("show");
+    });
+
+    document.getElementById("menu-saved-posts")?.addEventListener("click", () => {
+        setActiveNav(navSaved, "saved");
+        profileDropdown.classList.remove("show");
+    });
+
+    document.getElementById("menu-settings")?.addEventListener("click", () => {
+        showToast("Settings panel coming soon!", "info");
+        profileDropdown.classList.remove("show");
+    });
+
+    document.getElementById("menu-logout")?.addEventListener("click", () => {
+        showToast("Logged out successfully", "info");
+        profileDropdown.classList.remove("show");
+    });
+}
 
 // =====================================================
-// LOAD POSTS FROM BACKEND
+// SKELETON LOADING STATE
+// =====================================================
+
+function renderSkeletonLoaders() {
+    postsContainer.innerHTML = `
+        <div class="skeleton-card">
+            <div class="skeleton-line title"></div>
+            <div class="skeleton-line short"></div>
+            <div class="skeleton-line"></div>
+            <div class="skeleton-line short"></div>
+        </div>
+        <div class="skeleton-card">
+            <div class="skeleton-line title"></div>
+            <div class="skeleton-line short"></div>
+            <div class="skeleton-line"></div>
+        </div>
+    `;
+}
+
+// =====================================================
+// FETCH POSTS FROM BACKEND
 // =====================================================
 
 async function loadPosts() {
-
     try {
+        renderSkeletonLoaders();
 
-        postsContainer.innerHTML = `
-
-            <div class="loading">
-
-                Loading posts...
-
-            </div>
-
-        `;
-
-
-        const response =
-            await fetch(API_URL);
-
+        const response = await fetch(API_URL);
 
         if (!response.ok) {
-
-            throw new Error(
-                "Failed to fetch posts"
-            );
-
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
 
+        allPosts = await response.json();
+        console.log("SYNAPSE API Posts Loaded:", allPosts);
 
-        allPosts =
-            await response.json();
-
-
-        console.log(
-            "Posts loaded:",
-            allPosts
-        );
-
+        // Update hero discussions counter dynamically
+        if (statDiscussions) {
+            statDiscussions.textContent = allPosts.length > 0 ? (356 + allPosts.length) : "356";
+        }
 
         displayPosts();
 
-
     } catch (error) {
-
-        console.error(
-            "Error loading posts:",
-            error
-        );
-
-
+        console.error("Error loading posts from API:", error);
         postsContainer.innerHTML = `
-
-            <div class="error-message">
-
-                <h3>
-                    Unable to load posts
-                </h3>
-
-                <p>
-                    Make sure the backend server
-                    is running.
-                </p>
-
+            <div class="empty-state">
+                <div class="empty-icon">⚠️</div>
+                <h3>Unable to Connect to Backend</h3>
+                <p>Ensure your server is running at <code>http://localhost:5000/api/posts</code></p>
+                <button class="btn-hero-primary" onclick="loadPosts()">Retry Connection</button>
             </div>
-
         `;
-
+        showToast("Failed to fetch posts from backend", "error");
     }
-
 }
 
-
 // =====================================================
-// DISPLAY POSTS
+// DISPLAY POSTS (FILTER, SEARCH, SORT, RENDER)
 // =====================================================
 
 function displayPosts() {
+    let posts = [...allPosts];
 
-    let posts =
-        [...allPosts];
+    // LocalStorage State for Likes & Saved
+    const likedPosts = JSON.parse(localStorage.getItem(STORAGE_KEYS.LIKES) || "[]");
+    const savedPosts = JSON.parse(localStorage.getItem(STORAGE_KEYS.SAVED) || "[]");
+    const likeCounts = JSON.parse(localStorage.getItem(STORAGE_KEYS.LIKE_COUNTS) || "{}");
 
-
-    // =================================================
-    // CATEGORY FILTER
-    // =================================================
-
-    if (
-        selectedCategory !== "All"
-    ) {
-
-        posts =
-            posts.filter(
-                function (post) {
-
-                    return (
-                        post.category ===
-                        selectedCategory
-                    );
-
-                }
-            );
-
+    // 1. Navigation View Filter
+    if (activeView === "saved") {
+        posts = posts.filter(post => savedPosts.includes(post._id));
+    } else if (activeView === "myposts") {
+        // Filter demo student posts
+        posts = posts.filter(post => (post.author || "").toLowerCase().includes("student") || (post.author || "").toLowerCase().includes("sreya"));
     }
 
-
-    // =================================================
-    // SEARCH FILTER
-    // =================================================
-
-    const searchText =
-        searchInput.value
-            .toLowerCase()
-            .trim();
-
-
-    if (searchText !== "") {
-
-        posts =
-            posts.filter(
-                function (post) {
-
-                    const title =
-                        String(
-                            post.title || ""
-                        ).toLowerCase();
-
-
-                    const content =
-                        String(
-                            post.content || ""
-                        ).toLowerCase();
-
-
-                    const author =
-                        String(
-                            post.author || ""
-                        ).toLowerCase();
-
-
-                    const category =
-                        String(
-                            post.category || ""
-                        ).toLowerCase();
-
-
-                    return (
-
-                        title.includes(
-                            searchText
-                        )
-
-                        ||
-
-                        content.includes(
-                            searchText
-                        )
-
-                        ||
-
-                        author.includes(
-                            searchText
-                        )
-
-                        ||
-
-                        category.includes(
-                            searchText
-                        )
-
-                    );
-
-                }
-            );
-
+    // 2. Category Filter
+    if (selectedCategory !== "All") {
+        posts = posts.filter(post => post.category === selectedCategory);
     }
 
+    // 3. Search Filter
+    if (currentSearch.trim() !== "") {
+        const query = currentSearch.toLowerCase().trim();
+        posts = posts.filter(post => {
+            const title = (post.title || "").toLowerCase();
+            const content = (post.content || "").toLowerCase();
+            const author = (post.author || "").toLowerCase();
+            const category = (post.category || "").toLowerCase();
+            return title.includes(query) || content.includes(query) || author.includes(query) || category.includes(query);
+        });
+    }
 
-    // =================================================
-    // SORT
-    // =================================================
+    // 4. Sorting
+    posts.sort((a, b) => {
+        const dateA = new Date(a.createdAt || 0);
+        const dateB = new Date(b.createdAt || 0);
 
-    posts.sort(
-        function (a, b) {
-
-            const dateA =
-                new Date(
-                    a.createdAt || 0
-                );
-
-            const dateB =
-                new Date(
-                    b.createdAt || 0
-                );
-
-
-            if (
-                sortSelect.value ===
-                "latest"
-            ) {
-
-                return dateB - dateA;
-
-            }
-
-
+        if (currentSort === "oldest") {
             return dateA - dateB;
-
+        } else if (currentSort === "popular") {
+            const likesA = likeCounts[a._id] || 0;
+            const likesB = likeCounts[b._id] || 0;
+            return likesB - likesA;
         }
-    );
+        return dateB - dateA; // default: latest
+    });
 
-
-    // =================================================
-    // NO POSTS
-    // =================================================
-
+    // 5. Empty State Check
     if (posts.length === 0) {
-
         postsContainer.innerHTML = `
-
-            <div class="no-posts">
-
-                <div style="font-size: 40px;">
-                    📭
-                </div>
-
-                <h3>
-                    No posts found
-                </h3>
-
-                <p>
-                    Try changing your search
-                    or category.
-                </p>
-
+            <div class="empty-state">
+                <div class="empty-icon">📭</div>
+                <h3>No discussions found</h3>
+                <p>${activeView === 'saved' ? 'You have not saved any posts yet.' : 'Be the first student to start a discussion in this section.'}</p>
+                <button class="btn-create-post-banner" id="empty-create-btn" type="button">+ Start Discussion</button>
             </div>
-
         `;
-
+        document.getElementById("empty-create-btn")?.addEventListener("click", openModal);
         return;
-
     }
 
-
-    // =================================================
-    // CLEAR CONTAINER
-    // =================================================
-
+    // 6. Clear Container & Render Posts
     postsContainer.innerHTML = "";
 
+    posts.forEach(post => {
+        const postCard = document.createElement("article");
+        postCard.className = "post-card";
 
-    // =================================================
-    // CREATE POST CARDS
-    // =================================================
+        const isLiked = likedPosts.includes(post._id);
+        const isSaved = savedPosts.includes(post._id);
+        const currentLikes = (likeCounts[post._id] !== undefined) ? likeCounts[post._id] : Math.floor(Math.random() * 15) + 5;
 
-    posts.forEach(
-        function (post) {
+        // Date formatting
+        let dateText = "Recently";
+        if (post.createdAt) {
+            const d = new Date(post.createdAt);
+            dateText = d.toLocaleDateString("en-IN", {
+                day: "numeric",
+                month: "short",
+                year: "numeric"
+            });
+        }
 
-            const postCard =
-                document.createElement(
-                    "article"
-                );
+        postCard.innerHTML = `
+            <div class="post-header">
+                <div class="author-info">
+                    <div class="author-avatar">${getInitials(post.author)}</div>
+                    <div class="author-meta">
+                        <span class="author-name">${escapeHTML(post.author)}</span>
+                        <span class="post-timestamp">${dateText}</span>
+                    </div>
+                </div>
+                <div class="post-header-right">
+                    <span class="category-tag">
+                        ${getCategoryIcon(post.category)} ${escapeHTML(post.category)}
+                    </span>
+                </div>
+            </div>
 
+            <div class="post-body">
+                <h3>${escapeHTML(post.title)}</h3>
+                <p class="post-content-text">${escapeHTML(post.content)}</p>
+            </div>
 
-            postCard.className =
-                "post-card";
+            <div class="post-footer">
+                <div class="post-actions-group">
+                    <button class="action-btn like-btn ${isLiked ? 'liked' : ''}" type="button">
+                        ${isLiked ? '❤️' : '👍'} <span class="like-count">${currentLikes}</span>
+                    </button>
+                    <button class="action-btn comment-btn" type="button">
+                        💬 <span class="comment-label">Comment</span>
+                    </button>
+                </div>
+                <div class="post-actions-group">
+                    <button class="action-btn share-btn" type="button" title="Share Post">
+                        🔗 Share
+                    </button>
+                    <button class="action-btn save-btn ${isSaved ? 'saved' : ''}" type="button" title="Save Post">
+                        ${isSaved ? '🔖 Saved' : '🔖 Save'}
+                    </button>
+                </div>
+            </div>
 
+            <!-- INLINE COMMENTS DRAWER -->
+            <div class="comment-drawer" style="display: none;">
+                <div class="comments-list"></div>
+                <div class="comment-input-box">
+                    <input type="text" class="comment-input" placeholder="Write a comment...">
+                    <button type="button" class="btn-submit-comment">Post</button>
+                </div>
+            </div>
+        `;
 
-            // =========================================
-            // DATE
-            // =========================================
+        // Attach Card Event Listeners
 
-            let dateText = "";
+        // LIKE BUTTON
+        const likeBtn = postCard.querySelector(".like-btn");
+        const likeCountSpan = postCard.querySelector(".like-count");
+        likeBtn.addEventListener("click", () => {
+            let likesArr = JSON.parse(localStorage.getItem(STORAGE_KEYS.LIKES) || "[]");
+            let countsObj = JSON.parse(localStorage.getItem(STORAGE_KEYS.LIKE_COUNTS) || "{}");
+            let val = parseInt(likeCountSpan.textContent, 10);
 
-
-            if (post.createdAt) {
-
-                const date =
-                    new Date(
-                        post.createdAt
-                    );
-
-
-                dateText =
-                    date.toLocaleDateString(
-                        "en-IN",
-                        {
-                            day: "numeric",
-                            month: "short",
-                            year: "numeric"
-                        }
-                    );
-
+            if (likesArr.includes(post._id)) {
+                likesArr = likesArr.filter(id => id !== post._id);
+                val = Math.max(0, val - 1);
+                likeBtn.classList.remove("liked");
+                likeBtn.innerHTML = `👍 <span class="like-count">${val}</span>`;
+            } else {
+                likesArr.push(post._id);
+                val = val + 1;
+                likeBtn.classList.add("liked");
+                likeBtn.innerHTML = `❤️ <span class="like-count">${val}</span>`;
             }
 
+            countsObj[post._id] = val;
+            localStorage.setItem(STORAGE_KEYS.LIKES, JSON.stringify(likesArr));
+            localStorage.setItem(STORAGE_KEYS.LIKE_COUNTS, JSON.stringify(countsObj));
+        });
 
-            // =========================================
-            // POST HTML
-            // =========================================
+        // SAVE BUTTON
+        const saveBtn = postCard.querySelector(".save-btn");
+        saveBtn.addEventListener("click", () => {
+            let savedArr = JSON.parse(localStorage.getItem(STORAGE_KEYS.SAVED) || "[]");
+            if (savedArr.includes(post._id)) {
+                savedArr = savedArr.filter(id => id !== post._id);
+                saveBtn.classList.remove("saved");
+                saveBtn.textContent = "🔖 Save";
+                showToast("Post removed from saved", "info");
+            } else {
+                savedArr.push(post._id);
+                saveBtn.classList.add("saved");
+                saveBtn.textContent = "🔖 Saved";
+                showToast("Post saved to your bookmarks!", "success");
+            }
+            localStorage.setItem(STORAGE_KEYS.SAVED, JSON.stringify(savedArr));
+        });
 
-            postCard.innerHTML = `
+        // SHARE BUTTON
+        const shareBtn = postCard.querySelector(".share-btn");
+        shareBtn.addEventListener("click", async () => {
+            const shareData = {
+                title: post.title,
+                text: `${post.title} - Shared from SYNAPSE Department Community`,
+                url: window.location.href
+            };
 
-                <div class="post-card-header">
-
-                    <span class="post-category">
-
-                        ${getCategoryIcon(
-                post.category
-            )}
-
-                        ${escapeHTML(
-                post.category
-            )}
-
-                    </span>
-
-
-                    <span class="post-date">
-
-                        ${dateText}
-
-                    </span>
-
-                </div>
-
-
-                <h3>
-
-                    ${escapeHTML(
-                post.title
-            )}
-
-                </h3>
-
-
-                <p class="post-content">
-
-                    ${escapeHTML(
-                post.content
-            )}
-
-                </p>
-
-
-                <div class="post-footer">
-
-
-                    <div class="post-author">
-
-
-                        <div class="author-avatar">
-
-                            ${getInitials(
-                post.author
-            )}
-
-                        </div>
-
-
-                        <div>
-
-                            <strong>
-
-                                ${escapeHTML(
-                post.author
-            )}
-
-                            </strong>
-
-
-                            ${dateText
-                    ? `
-                                        <small>
-                                            ${dateText}
-                                        </small>
-                                    `
-                    : ""
+            if (navigator.share) {
+                try {
+                    await navigator.share(shareData);
+                } catch (e) {
+                    // Fallback to clipboard
+                    copyToClipboard(post.title);
                 }
+            } else {
+                copyToClipboard(post.title);
+            }
+        });
 
-                        </div>
+        // COMMENT BUTTON & DRAWER
+        const commentBtn = postCard.querySelector(".comment-btn");
+        const commentDrawer = postCard.querySelector(".comment-drawer");
+        const commentsList = postCard.querySelector(".comments-list");
+        const commentInput = postCard.querySelector(".comment-input");
+        const commentSubmitBtn = postCard.querySelector(".btn-submit-comment");
 
+        // Load existing stored comments for this post
+        const storedComments = JSON.parse(localStorage.getItem(STORAGE_KEYS.COMMENTS) || "{}");
+        const postCommentsList = storedComments[post._id] || [];
 
+        function renderComments() {
+            if (postCommentsList.length === 0) {
+                commentsList.innerHTML = `<p style="font-size: 0.82rem; color: var(--text-muted); padding: 0.25rem;">No comments yet. Start the conversation!</p>`;
+                return;
+            }
+            commentsList.innerHTML = postCommentsList.map(c => `
+                <div class="comment-item">
+                    <div class="comment-avatar">${getInitials(c.author)}</div>
+                    <div class="comment-content-wrap">
+                        <strong>${escapeHTML(c.author)}</strong>
+                        <p>${escapeHTML(c.text)}</p>
                     </div>
-
-
-                    <div class="post-actions">
-
-
-                        <button
-                            class="post-action like-btn"
-                            type="button"
-                        >
-
-                            👍 Like
-
-                        </button>
-
-
-                        <button
-                            class="post-action comment-btn"
-                            type="button"
-                        >
-
-                            💬 Comment
-
-                        </button>
-
-
-                    </div>
-
-
                 </div>
-
-            `;
-
-
-            // =========================================
-            // LIKE BUTTON
-            // =========================================
-
-            const likeButton =
-                postCard.querySelector(
-                    ".like-btn"
-                );
-
-
-            likeButton.addEventListener(
-                "click",
-                function () {
-
-                    likeButton.classList.toggle(
-                        "liked"
-                    );
-
-
-                    if (
-                        likeButton.classList.contains(
-                            "liked"
-                        )
-                    ) {
-
-                        likeButton.textContent =
-                            "❤️ Liked";
-
-                    } else {
-
-                        likeButton.textContent =
-                            "👍 Like";
-
-                    }
-
-                }
-            );
-
-
-            // =========================================
-            // COMMENT BUTTON
-            // =========================================
-
-            const commentButton =
-                postCard.querySelector(
-                    ".comment-btn"
-                );
-
-
-            commentButton.addEventListener(
-                "click",
-                function () {
-
-                    let commentSection =
-                        postCard.querySelector(
-                            ".comment-section"
-                        );
-
-
-                    // ---------------------------------
-                    // CREATE COMMENT SECTION
-                    // ---------------------------------
-
-                    if (!commentSection) {
-
-                        commentSection =
-                            document.createElement(
-                                "div"
-                            );
-
-
-                        commentSection.className =
-                            "comment-section";
-
-
-                        commentSection.innerHTML = `
-
-                            <div class="comment-list">
-
-                                <p class="no-comments">
-
-                                    No comments yet.
-                                    Be the first to comment!
-
-                                </p>
-
-                            </div>
-
-
-                            <div class="comment-form">
-
-                                <input
-                                    type="text"
-                                    class="comment-input"
-                                    placeholder="Write a comment..."
-                                >
-
-
-                                <button
-                                    type="button"
-                                    class="comment-submit"
-                                >
-
-                                    Comment
-
-                                </button>
-
-                            </div>
-
-                        `;
-
-
-                        postCard.appendChild(
-                            commentSection
-                        );
-
-
-                        // =============================
-                        // COMMENT ELEMENTS
-                        // =============================
-
-                        const commentInput =
-                            commentSection.querySelector(
-                                ".comment-input"
-                            );
-
-
-                        const commentSubmit =
-                            commentSection.querySelector(
-                                ".comment-submit"
-                            );
-
-
-                        const commentList =
-                            commentSection.querySelector(
-                                ".comment-list"
-                            );
-
-
-                        // =============================
-                        // SUBMIT COMMENT
-                        // =============================
-
-                        commentSubmit.addEventListener(
-                            "click",
-                            function () {
-
-                                const commentText =
-                                    commentInput.value
-                                        .trim();
-
-
-                                if (
-                                    !commentText
-                                ) {
-
-                                    alert(
-                                        "Please enter a comment."
-                                    );
-
-                                    return;
-
-                                }
-
-
-                                // Remove empty message
-                                const noComments =
-                                    commentList.querySelector(
-                                        ".no-comments"
-                                    );
-
-
-                                if (noComments) {
-
-                                    noComments.remove();
-
-                                }
-
-
-                                // Create comment
-                                const comment =
-                                    document.createElement(
-                                        "div"
-                                    );
-
-
-                                comment.className =
-                                    "comment-item";
-
-
-                                comment.innerHTML = `
-
-                                    <div class="comment-avatar">
-
-                                        👤
-
-                                    </div>
-
-
-                                    <div class="comment-body">
-
-                                        <strong>
-                                            You
-                                        </strong>
-
-                                        <p>
-                                            ${escapeHTML(
-                                    commentText
-                                )}
-                                        </p>
-
-                                    </div>
-
-                                `;
-
-
-                                commentList.appendChild(
-                                    comment
-                                );
-
-
-                                // Clear input
-                                commentInput.value =
-                                    "";
-
-                            }
-                        );
-
-
-                        // =============================
-                        // ENTER KEY
-                        // =============================
-
-                        commentInput.addEventListener(
-                            "keydown",
-                            function (event) {
-
-                                if (
-                                    event.key ===
-                                    "Enter"
-                                ) {
-
-                                    event.preventDefault();
-
-                                    commentSubmit.click();
-
-                                }
-
-                            }
-                        );
-
-
-                        // Focus input
-                        commentInput.focus();
-
-
-                    } else {
-
-                        // =============================
-                        // TOGGLE COMMENT SECTION
-                        // =============================
-
-                        if (
-                            commentSection.style.display ===
-                            "none"
-                        ) {
-
-                            commentSection.style.display =
-                                "block";
-
-                        } else {
-
-                            commentSection.style.display =
-                                "none";
-
-                        }
-
-                    }
-
-                }
-            );
-
-
-            // =========================================
-            // ADD CARD TO DOM
-            // =========================================
-
-            postsContainer.appendChild(
-                postCard
-            );
-
+            `).join("");
         }
-    );
 
+        commentBtn.addEventListener("click", () => {
+            const isVisible = commentDrawer.style.display !== "none";
+            commentDrawer.style.display = isVisible ? "none" : "block";
+            if (!isVisible) renderComments();
+        });
+
+        commentSubmitBtn.addEventListener("click", () => {
+            const text = commentInput.value.trim();
+            if (!text) return;
+
+            postCommentsList.push({
+                author: "Student User",
+                text: text
+            });
+
+            storedComments[post._id] = postCommentsList;
+            localStorage.setItem(STORAGE_KEYS.COMMENTS, JSON.stringify(storedComments));
+
+            commentInput.value = "";
+            renderComments();
+            showToast("Comment added!", "success");
+        });
+
+        postsContainer.appendChild(postCard);
+    });
 }
 
+function copyToClipboard(title) {
+    navigator.clipboard.writeText(`${title} - SYNAPSE Community`);
+    showToast("Post link copied to clipboard!", "success");
+}
 
 // =====================================================
-// CREATE NEW POST
+// SEARCH, SORT & CATEGORY EVENT LISTENERS
 // =====================================================
 
-postForm.addEventListener(
-    "submit",
-    async function (event) {
-
-        event.preventDefault();
-
-
-        // =============================================
-        // GET FORM VALUES
-        // =============================================
-
-        const title =
-            document
-                .getElementById("title")
-                .value
-                .trim();
-
-
-        const author =
-            document
-                .getElementById("author")
-                .value
-                .trim();
-
-
-        const category =
-            document
-                .getElementById("category")
-                .value;
-
-
-        const content =
-            document
-                .getElementById("content")
-                .value
-                .trim();
-
-
-        // =============================================
-        // VALIDATION
-        // =============================================
-
-        if (
-            !title ||
-            !author ||
-            !category ||
-            !content
-        ) {
-
-            alert(
-                "Please fill in all fields."
-            );
-
-            return;
-
-        }
-
-
-        // =============================================
-        // NEW POST OBJECT
-        // =============================================
-
-        const newPost = {
-
-            title: title,
-
-            author: author,
-
-            category: category,
-
-            content: content
-
-        };
-
-
-        try {
-
-            const submitButton =
-                postForm.querySelector(
-                    "button[type='submit']"
-                );
-
-
-            submitButton.disabled =
-                true;
-
-
-            submitButton.textContent =
-                "Publishing...";
-
-
-            // =========================================
-            // SEND POST TO BACKEND
-            // =========================================
-
-            const response =
-                await fetch(
-                    API_URL,
-                    {
-                        method: "POST",
-
-                        headers: {
-                            "Content-Type":
-                                "application/json"
-                        },
-
-                        body:
-                            JSON.stringify(
-                                newPost
-                            )
-                    }
-                );
-
-
-            if (!response.ok) {
-
-                throw new Error(
-                    "Failed to create post"
-                );
-
-            }
-
-
-            // =========================================
-            // GET CREATED POST
-            // =========================================
-
-            const createdPost =
-                await response.json();
-
-
-            console.log(
-                "Post created:",
-                createdPost
-            );
-
-
-            // =========================================
-            // ADD TO LOCAL DATA
-            // =========================================
-
-            allPosts.push(
-                createdPost
-            );
-
-
-            // =========================================
-            // RESET FORM
-            // =========================================
-
-            postForm.reset();
-
-
-            // =========================================
-            // CLOSE MODAL
-            // =========================================
-
-            closeModal();
-
-
-            // =========================================
-            // REFRESH POSTS
-            // =========================================
-
-            displayPosts();
-
-
-            alert(
-                "Post published successfully!"
-            );
-
-
-        } catch (error) {
-
-            console.error(
-                "Error creating post:",
-                error
-            );
-
-
-            alert(
-                "Unable to publish post. Check your backend server."
-            );
-
-
-        } finally {
-
-            const submitButton =
-                postForm.querySelector(
-                    "button[type='submit']"
-                );
-
-
-            submitButton.disabled =
-                false;
-
-
-            submitButton.textContent =
-                "Publish Post";
-
-        }
-
-    }
-);
-
+// Search Input Listener
+if (searchInput) {
+    searchInput.addEventListener("input", (e) => {
+        currentSearch = e.target.value;
+        displayPosts();
+    });
+}
+
+// Sort Select Listener
+if (sortSelect) {
+    sortSelect.addEventListener("change", (e) => {
+        currentSort = e.target.value;
+        displayPosts();
+    });
+}
+
+// Category Buttons Listener
+const categoryButtons = document.querySelectorAll(".category-btn");
+categoryButtons.forEach(btn => {
+    btn.addEventListener("click", () => {
+        categoryButtons.forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        selectedCategory = btn.getAttribute("data-category");
+        displayPosts();
+    });
+});
+
+// Navigation Bar Items (Home, Explore, Saved, MyPosts)
+function setActiveNav(element, viewName) {
+    [navHome, navExplore, navSaved, navMyposts].forEach(el => el?.classList.remove("active"));
+    element?.classList.add("active");
+    activeView = viewName;
+    displayPosts();
+}
+
+navHome?.addEventListener("click", () => setActiveNav(navHome, "home"));
+navExplore?.addEventListener("click", () => setActiveNav(navExplore, "explore"));
+navSaved?.addEventListener("click", () => setActiveNav(navSaved, "saved"));
+navMyposts?.addEventListener("click", () => setActiveNav(navMyposts, "myposts"));
+
+document.getElementById("hero-explore-btn")?.addEventListener("click", () => {
+    setActiveNav(navExplore, "explore");
+});
 
 // =====================================================
-// OPEN CREATE POST MODAL
+// CREATE POST MODAL LOGIC & BACKEND POST REQUEST
 // =====================================================
 
-createPostBtn.addEventListener(
-    "click",
-    function () {
-
-        postModal.classList.add(
-            "show"
-        );
-
-        document
-            .getElementById("title")
-            .focus();
-
-    }
-);
-
-
-// =====================================================
-// CLOSE MODAL FUNCTION
-// =====================================================
+function openModal() {
+    if (postModal) postModal.classList.add("show");
+}
 
 function closeModal() {
-
-    postModal.classList.remove(
-        "show"
-    );
-
+    if (postModal) postModal.classList.remove("show");
+    if (postForm) postForm.reset();
 }
 
+if (createPostBtn) createPostBtn.addEventListener("click", openModal);
+if (heroCreateBtn) heroCreateBtn.addEventListener("click", openModal);
+if (quickPostTrigger) quickPostTrigger.addEventListener("click", openModal);
+if (closeModalBtn) closeModalBtn.addEventListener("click", closeModal);
+if (cancelPostBtn) cancelPostBtn.addEventListener("click", closeModal);
 
-// =====================================================
-// CLOSE BUTTON
-// =====================================================
+// Close modal when clicking outside modal card
+if (postModal) {
+    postModal.addEventListener("click", (e) => {
+        if (e.target === postModal) closeModal();
+    });
+}
 
-closeModalBtn.addEventListener(
-    "click",
-    function () {
+// Form Submission -> POST to backend
+if (postForm) {
+    postForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
 
-        closeModal();
+        const title = document.getElementById("title").value.trim();
+        const author = document.getElementById("author").value.trim();
+        const category = document.getElementById("category").value;
+        const content = document.getElementById("content").value.trim();
 
-    }
-);
-
-
-// =====================================================
-// CANCEL BUTTON
-// =====================================================
-
-cancelPostBtn.addEventListener(
-    "click",
-    function () {
-
-        closeModal();
-
-    }
-);
-
-
-// =====================================================
-// CLICK OUTSIDE MODAL
-// =====================================================
-
-postModal.addEventListener(
-    "click",
-    function (event) {
-
-        if (
-            event.target ===
-            postModal
-        ) {
-
-            closeModal();
-
+        if (!title || !author || !category || !content) {
+            showToast("Please fill in all required fields", "error");
+            return;
         }
 
-    }
-);
+        try {
+            showToast("Publishing discussion...", "info");
 
+            const response = await fetch(API_URL, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    title,
+                    author,
+                    category,
+                    content
+                })
+            });
 
-// =====================================================
-// ESCAPE KEY
-// =====================================================
-
-document.addEventListener(
-    "keydown",
-    function (event) {
-
-        if (
-            event.key ===
-            "Escape"
-        ) {
-
-            closeModal();
-
-        }
-
-    }
-);
-
-
-// =====================================================
-// CATEGORY FILTER
-// =====================================================
-
-categoryButtons.forEach(
-    function (button) {
-
-        button.addEventListener(
-            "click",
-            function () {
-
-                // Remove active
-                categoryButtons.forEach(
-                    function (btn) {
-
-                        btn.classList.remove(
-                            "active"
-                        );
-
-                    }
-                );
-
-
-                // Add active
-                button.classList.add(
-                    "active"
-                );
-
-
-                // Get category
-                selectedCategory =
-                    button.dataset.category;
-
-
-                // Display filtered posts
-                displayPosts();
-
+            if (!response.ok) {
+                throw new Error("Failed to create post");
             }
-        );
 
-    }
-);
+            const createdPost = await response.json();
+            console.log("Post published successfully:", createdPost);
 
+            showToast("Post published successfully!", "success");
+            closeModal();
+            loadPosts();
 
-// =====================================================
-// SEARCH
-// =====================================================
-
-searchInput.addEventListener(
-    "input",
-    function () {
-
-        displayPosts();
-
-    }
-);
-
-
-// =====================================================
-// SORT
-// =====================================================
-
-sortSelect.addEventListener(
-    "change",
-    function () {
-
-        displayPosts();
-
-    }
-);
-
-
-// =====================================================
-// CATEGORY ICON
-// =====================================================
-
-function getCategoryIcon(category) {
-
-    if (
-        category ===
-        "Academic"
-    ) {
-
-        return "📚";
-
-    }
-
-
-    if (
-        category ===
-        "Placement"
-    ) {
-
-        return "💼";
-
-    }
-
-
-    if (
-        category ===
-        "Events"
-    ) {
-
-        return "📢";
-
-    }
-
-
-    if (
-        category ===
-        "General"
-    ) {
-
-        return "💬";
-
-    }
-
-
-    if (
-        category ===
-        "Other"
-    ) {
-
-        return "📌";
-
-    }
-
-
-    return "📝";
-
+        } catch (error) {
+            console.error("Error publishing post:", error);
+            showToast("Failed to publish post. Check backend server.", "error");
+        }
+    });
 }
 
-
 // =====================================================
-// AUTHOR INITIALS
+// INIT APPLICATION
 // =====================================================
-
-function getInitials(name) {
-
-    if (!name) {
-
-        return "?";
-
-    }
-
-
-    const words =
-        name
-            .trim()
-            .split(/\s+/);
-
-
-    if (
-        words.length === 1
-    ) {
-
-        return words[0]
-            .substring(0, 2)
-            .toUpperCase();
-
-    }
-
-
-    return (
-
-        words[0].charAt(0) +
-
-        words[
-            words.length - 1
-        ].charAt(0)
-
-    ).toUpperCase();
-
-}
-
-
-// =====================================================
-// SECURITY - ESCAPE HTML
-// =====================================================
-
-function escapeHTML(text) {
-
-    if (
-        text === null ||
-        text === undefined
-    ) {
-
-        return "";
-
-    }
-
-
-    const div =
-        document.createElement(
-            "div"
-        );
-
-
-    div.textContent =
-        text;
-
-
-    return div.innerHTML;
-
-}
-
-
-// =====================================================
-// START APPLICATION
-// =====================================================
-
-loadPosts();
+document.addEventListener("DOMContentLoaded", () => {
+    loadPosts();
+});

@@ -2,488 +2,321 @@
 <html lang="en">
 
 <head>
-
     <meta charset="UTF-8">
-
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <title>DeptConnect</title>
-
+    <title>SYNAPSE - Department Community Platform</title>
     <link rel="stylesheet" href="style.css">
-
 </head>
 
 <body>
 
     <!-- ================= NAVBAR ================= -->
-
     <header class="navbar">
-
         <div class="logo">
-
-            <span class="logo-icon">D</span>
-
-            <span>DeptConnect</span>
-
+            <div class="logo-badge">S</div>
+            <div class="logo-text-container">
+                <span class="logo-title">SYNAPSE</span>
+                <span class="logo-subtitle">Department Community</span>
+            </div>
         </div>
-
 
         <nav class="nav-links">
-
-            <a href="#" class="active">
-                Home
-            </a>
-
-            <a href="#">
-                Explore
-            </a>
-
-            <a href="#">
-                Resources
-            </a>
-
+            <a href="#" class="nav-link active">Home</a>
+            <a href="#" class="nav-link">Explore</a>
+            <a href="#" class="nav-link">Resources</a>
+            <a href="admin.html" class="nav-link" title="Go to Admin Panel">Admin</a>
         </nav>
 
-
         <div class="nav-right">
-
             <div class="search-box">
-
-                <span>🔍</span>
-
-                <input type="text" id="search-input" placeholder="Search posts...">
-
+                <span class="search-icon">🔍</span>
+                <input type="text" id="search-input" placeholder="Search posts, authors...">
             </div>
 
+            <button class="icon-btn" id="notification-btn" type="button" title="Notifications" aria-label="Notifications">
+                🔔
+                <span class="notification-badge"></span>
+            </button>
 
-            <button class="theme-toggle-btn" id="theme-toggle" type="button" aria-label="Toggle dark/light mode"
-                title="Toggle Light/Dark Mode">
-
+            <button class="icon-btn" id="theme-toggle" type="button" aria-label="Toggle dark/light mode" title="Toggle Light/Dark Mode">
                 <span id="theme-icon">🌙</span>
-
             </button>
 
-
-            <button class="profile-btn" type="button">
-
-                👤
-
-            </button>
-
+            <div class="profile-menu-container">
+                <button class="profile-avatar-btn" id="profile-btn" type="button" aria-label="User Profile">
+                    S
+                </button>
+                <div class="profile-dropdown" id="profile-dropdown">
+                    <div class="profile-dropdown-header">
+                        <strong>Student Account</strong>
+                        <span>student@dept.edu</span>
+                    </div>
+                    <button class="dropdown-item" id="menu-my-posts" type="button">
+                        📝 My Posts
+                    </button>
+                    <button class="dropdown-item" id="menu-saved-posts" type="button">
+                        🔖 Saved Posts
+                    </button>
+                    <a href="admin.html" class="dropdown-item">
+                        🛡️ Admin Panel
+                    </a>
+                    <button class="dropdown-item" id="menu-settings" type="button">
+                        ⚙️ Settings
+                    </button>
+                    <button class="dropdown-item" id="menu-logout" type="button">
+                        🚪 Logout
+                    </button>
+                </div>
+            </div>
         </div>
-
     </header>
 
-
-
-    <!-- ================= MAIN ================= -->
-
+    <!-- ================= MAIN PAGE CONTAINER ================= -->
     <main class="page-container">
 
-
-        <!-- ================= HERO ================= -->
-
+        <!-- ================= HERO SECTION ================= -->
         <section class="hero">
-
-            <div class="hero-content">
-
-                <p class="hero-label">
-                    WELCOME TO YOUR DEPARTMENT
-                </p>
-
-
-                <h1>
-
-                    Learn. Share.
-
-                    <span>
-                        Connect.
-                    </span>
-
-                </h1>
-
-
-                <p class="hero-description">
-
-                    A student community to ask questions,
-                    share knowledge, discover opportunities
-                    and stay connected with your department.
-
-                </p>
-
-
-                <div class="hero-buttons">
-
-                    <button class="primary-btn" id="create-post-btn" type="button">
-
-                        + Create Post
-
-                    </button>
-
-
-                    <button class="secondary-btn" type="button">
-
-                        Explore Community
-
-                    </button>
-
+            <div class="hero-wrapper">
+                <div class="hero-text">
+                    <span class="hero-pill">✨ Welcome Back 👋</span>
+                    <h1>Your Department.<br>Your Community.</h1>
+                    <p class="hero-description">
+                        Connect with classmates, share knowledge, discover project & internship opportunities, and stay updated with department announcements.
+                    </p>
+                    <div class="hero-buttons">
+                        <button class="btn-hero-primary" id="hero-create-btn" type="button">
+                            + Create Post
+                        </button>
+                        <button class="btn-hero-secondary" id="hero-explore-btn" type="button">
+                            Explore Discussions
+                        </button>
+                    </div>
                 </div>
 
+                <div class="hero-stats">
+                    <div class="stat-item">
+                        <span class="stat-number" id="stat-students">1,240</span>
+                        <span class="stat-label">Students</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number" id="stat-discussions">356</span>
+                        <span class="stat-label">Discussions</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number" id="stat-events">48</span>
+                        <span class="stat-label">Events</span>
+                    </div>
+                </div>
             </div>
-
         </section>
 
-
-
-        <!-- ================= CONTENT ================= -->
-
-        <div class="content-layout">
-
+        <!-- ================= 3-COLUMN DASHBOARD ================= -->
+        <div class="dashboard-grid">
 
             <!-- ================= LEFT SIDEBAR ================= -->
-
             <aside class="sidebar">
-
-                <div class="sidebar-section">
-
-                    <h3>
-                        Categories
-                    </h3>
-
-
-                    <button class="category-btn active" data-category="All" type="button">
-
-                        <span>🏠</span>
-
-                        All Posts
-
-                    </button>
-
-
-                    <button class="category-btn" data-category="Academic" type="button">
-
-                        <span>📚</span>
-
-                        Academic
-
-                    </button>
-
-
-                    <button class="category-btn" data-category="Placement" type="button">
-
-                        <span>💼</span>
-
-                        Placement
-
-                    </button>
-
-
-                    <button class="category-btn" data-category="Events" type="button">
-
-                        <span>📢</span>
-
-                        Events
-
-                    </button>
-
-
-                    <button class="category-btn" data-category="General" type="button">
-
-                        <span>💬</span>
-
-                        General
-
-                    </button>
-
-
-                    <button class="category-btn" data-category="Other" type="button">
-
-                        <span>📌</span>
-
-                        Other
-
-                    </button>
-
+                <div class="sidebar-box">
+                    <div class="sidebar-heading">Navigation</div>
+                    <div class="nav-menu">
+                        <button class="sidebar-btn active" id="nav-home" type="button">
+                            <span class="btn-icon">🏠</span> Home Feed
+                        </button>
+                        <button class="sidebar-btn" id="nav-explore" type="button">
+                            <span class="btn-icon">🧭</span> Explore
+                        </button>
+                        <button class="sidebar-btn" id="nav-saved" type="button">
+                            <span class="btn-icon">🔖</span> Saved Posts
+                        </button>
+                        <button class="sidebar-btn" id="nav-myposts" type="button">
+                            <span class="btn-icon">👤</span> My Posts
+                        </button>
+                    </div>
                 </div>
 
+                <div class="sidebar-box">
+                    <div class="sidebar-heading">Categories</div>
+                    <div class="nav-menu" id="category-list">
+                        <button class="sidebar-btn category-btn active" data-category="All" type="button">
+                            <span class="btn-icon">💬</span> All Posts
+                        </button>
+                        <button class="sidebar-btn category-btn" data-category="Academic" type="button">
+                            <span class="btn-icon">📚</span> Academic
+                        </button>
+                        <button class="sidebar-btn category-btn" data-category="Placement" type="button">
+                            <span class="btn-icon">💼</span> Placement
+                        </button>
+                        <button class="sidebar-btn category-btn" data-category="Events" type="button">
+                            <span class="btn-icon">📢</span> Events
+                        </button>
+                        <button class="sidebar-btn category-btn" data-category="General" type="button">
+                            <span class="btn-icon">🌐</span> General
+                        </button>
+                        <button class="sidebar-btn category-btn" data-category="Internships" type="button">
+                            <span class="btn-icon">🚀</span> Internships
+                        </button>
+                        <button class="sidebar-btn category-btn" data-category="Projects" type="button">
+                            <span class="btn-icon">💻</span> Projects
+                        </button>
+                        <button class="sidebar-btn category-btn" data-category="Other" type="button">
+                            <span class="btn-icon">📌</span> Other
+                        </button>
+                    </div>
+                </div>
             </aside>
 
+            <!-- ================= CENTER FEED ================= -->
+            <section class="feed-container">
 
-
-            <!-- ================= FEED ================= -->
-
-            <section class="feed">
-
-                <div class="feed-header">
-
-                    <div>
-
-                        <h2>
-                            Community Feed
-                        </h2>
-
-                        <p>
-                            What's happening in your department?
-                        </p>
-
+                <div class="feed-header-card">
+                    <div class="feed-title-area">
+                        <h2>Community Feed</h2>
+                        <p id="feed-subtitle">See what's happening in your department</p>
                     </div>
-
-
-                    <select id="sort-select">
-
-                        <option value="latest">
-                            Latest
-                        </option>
-
-                        <option value="oldest">
-                            Oldest
-                        </option>
-
-                    </select>
-
+                    <div class="feed-controls">
+                        <select id="sort-select" class="select-control">
+                            <option value="latest">Latest</option>
+                            <option value="oldest">Oldest</option>
+                            <option value="popular">Most Popular</option>
+                        </select>
+                        <button class="btn-create-post-banner" id="create-post-btn" type="button">
+                            + Create Post
+                        </button>
+                    </div>
                 </div>
 
+                <!-- Quick Post Trigger Bar -->
+                <div class="quick-post-bar" id="quick-post-trigger">
+                    <div class="user-quick-avatar">S</div>
+                    <div class="quick-post-input">Share something with your department...</div>
+                </div>
 
-                <!-- POSTS -->
-
+                <!-- POSTS FEED CONTAINER -->
                 <div id="posts-container">
-
-                    <div class="loading">
-
-                        Loading posts...
-
-                    </div>
-
+                    <!-- Skeletons render here initially -->
                 </div>
 
             </section>
 
-
-
             <!-- ================= RIGHT SIDEBAR ================= -->
-
             <aside class="right-sidebar">
 
-
-                <!-- TRENDING -->
-
-                <div class="widget">
-
-                    <h3>
-                        🔥 Trending
-                    </h3>
-
-
-                    <div class="trending-item">
-
-                        <span>
-                            01
-                        </span>
-
-                        <div>
-
-                            <strong>
-                                Academic Discussions
-                            </strong>
-
-                            <small>
-                                Popular this week
-                            </small>
-
-                        </div>
-
+                <!-- TRENDING DISCUSSIONS -->
+                <div class="widget-card">
+                    <div class="widget-title">
+                        <span>🔥</span> Trending Discussions
                     </div>
-
-
-                    <div class="trending-item">
-
-                        <span>
-                            02
-                        </span>
-
-                        <div>
-
-                            <strong>
-                                Placement Preparation
-                            </strong>
-
-                            <small>
-                                Popular this week
-                            </small>
-
+                    <div class="trending-list">
+                        <div class="trending-item">
+                            <span class="trending-rank">01</span>
+                            <div class="trending-details">
+                                <h4>Placement Preparation Guide 2026</h4>
+                                <span>128 interactions</span>
+                            </div>
                         </div>
-
-                    </div>
-
-
-                    <div class="trending-item">
-
-                        <span>
-                            03
-                        </span>
-
-                        <div>
-
-                            <strong>
-                                Internship Opportunities
-                            </strong>
-
-                            <small>
-                                Popular this week
-                            </small>
-
+                        <div class="trending-item">
+                            <span class="trending-rank">02</span>
+                            <div class="trending-details">
+                                <h4>DBMS & OS Lab Notes Share</h4>
+                                <span>94 interactions</span>
+                            </div>
                         </div>
-
+                        <div class="trending-item">
+                            <span class="trending-rank">03</span>
+                            <div class="trending-details">
+                                <h4>Summer Internship Opportunities</h4>
+                                <span>76 interactions</span>
+                            </div>
+                        </div>
                     </div>
-
                 </div>
 
-
+                <!-- DEPARTMENT ANNOUNCEMENTS -->
+                <div class="widget-card">
+                    <div class="widget-title">
+                        <span>📢</span> Announcements
+                    </div>
+                    <div class="announcements-list">
+                        <div class="announcement-item">
+                            <p>Internal Assessment Schedule published for CS & IT.</p>
+                            <span>Today</span>
+                        </div>
+                        <div class="announcement-item">
+                            <p>Placement cell registration is now open for final years.</p>
+                            <span>2 days ago</span>
+                        </div>
+                    </div>
+                </div>
 
                 <!-- COMMUNITY GUIDELINES -->
-
-                <div class="widget community-guidelines">
-
-                    <h3>
-                        💡 Community Guidelines
-                    </h3>
-
-                    <p>
-
-                        Be respectful, helpful and constructive.
-                        Share knowledge and help your classmates.
-
-                    </p>
-
+                <div class="widget-card">
+                    <div class="widget-title">
+                        <span>💡</span> Guidelines
+                    </div>
+                    <ul class="guidelines-list">
+                        <li>Be respectful to classmates</li>
+                        <li>Help answer peer queries</li>
+                        <li>Avoid spam & self-promotion</li>
+                        <li>Share verified academic info</li>
+                    </ul>
                 </div>
 
             </aside>
 
         </div>
-
     </main>
 
-
-
     <!-- ================= CREATE POST MODAL ================= -->
-
-    <div class="modal" id="post-modal">
-
-        <div class="modal-content">
-
-
+    <div class="modal-overlay" id="post-modal">
+        <div class="modal-card">
             <div class="modal-header">
-
-                <h2>
-                    Create a Post
-                </h2>
-
-
-                <button id="close-modal" class="close-btn" type="button">
-
-                    ×
-
-                </button>
-
+                <h3>Create a Discussion</h3>
+                <button id="close-modal" class="modal-close-btn" type="button">&times;</button>
             </div>
+            <div class="modal-body">
+                <form id="post-form">
+                    <div class="form-group">
+                        <label for="title">Post Title</label>
+                        <input type="text" id="title" placeholder="What do you want to discuss?" required>
+                    </div>
 
+                    <div class="form-group">
+                        <label for="author">Your Name</label>
+                        <input type="text" id="author" placeholder="Enter your full name" required>
+                    </div>
 
+                    <div class="form-group">
+                        <label for="category">Category</label>
+                        <select id="category" required>
+                            <option value="">Select Category</option>
+                            <option value="Academic">Academic</option>
+                            <option value="Placement">Placement</option>
+                            <option value="Events">Events</option>
+                            <option value="General">General</option>
+                            <option value="Internships">Internships</option>
+                            <option value="Projects">Projects</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
 
-            <form id="post-form">
+                    <div class="form-group">
+                        <label for="content">Content</label>
+                        <textarea id="content" rows="5" placeholder="Share knowledge, questions or opportunities..." required></textarea>
+                    </div>
 
-
-                <label for="title">
-                    Title
-                </label>
-
-
-                <input type="text" id="title" placeholder="What do you want to discuss?" required>
-
-
-
-                <label for="author">
-                    Your Name
-                </label>
-
-
-                <input type="text" id="author" placeholder="Enter your name" required>
-
-
-
-                <label for="category">
-                    Category
-                </label>
-
-
-                <select id="category" required>
-
-                    <option value="">
-                        Select Category
-                    </option>
-
-                    <option value="Academic">
-                        Academic
-                    </option>
-
-                    <option value="Placement">
-                        Placement
-                    </option>
-
-                    <option value="Events">
-                        Events
-                    </option>
-
-                    <option value="General">
-                        General
-                    </option>
-
-                    <option value="Other">
-                        Other
-                    </option>
-
-                </select>
-
-
-
-                <label for="content">
-                    Content
-                </label>
-
-
-                <textarea id="content" rows="5" placeholder="Share your thoughts, questions or information..."
-                    required></textarea>
-
-
-
-                <div class="form-actions">
-
-                    <button type="button" id="cancel-post" class="secondary-btn">
-
-                        Cancel
-
-                    </button>
-
-
-                    <button type="submit" class="primary-btn">
-
-                        Publish Post
-
-                    </button>
-
-                </div>
-
-            </form>
-
+                    <div class="form-actions">
+                        <button type="button" id="cancel-post" class="btn-cancel">Cancel</button>
+                        <button type="submit" class="btn-publish">Publish Post</button>
+                    </div>
+                </form>
+            </div>
         </div>
-
     </div>
 
+    <!-- TOAST CONTAINER -->
+    <div id="toast-container"></div>
 
-
-    <!-- ================= JAVASCRIPT ================= -->
-
+    <!-- JAVASCRIPT -->
     <script src="script.js"></script>
-
 </body>
 
 </html>
