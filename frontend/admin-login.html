@@ -113,8 +113,8 @@
                 🔒 This portal is monitored. Unauthorized access attempts are logged.
             </div>
 
-            <div class="alert-msg alert-error" id="alert-error"></div>
-            <div class="alert-msg alert-success" id="alert-success"></div>
+            <div class="alert-msg alert-error" id="alert-error" role="alert" aria-live="assertive"></div>
+            <div class="alert-msg alert-success" id="alert-success" role="alert" aria-live="assertive"></div>
 
             <form id="admin-login-form">
                 <div class="form-group">
@@ -134,13 +134,16 @@
         </div>
     </div>
 
+    <script src="config.js"></script>
+
+
     <script>
-        const API = "http://localhost:5000";
+        const API = SYNAPSE_API_URL;
 
         // Already logged in admin
         const token = localStorage.getItem("synapse_token");
         const role = localStorage.getItem("synapse_role");
-        if (token && role === "admin") window.location.href = "admin.html";
+        if (token && role === "admin") window.location.replace("admin.html");
 
         function showAlert(type, message) {
             const errEl = document.getElementById("alert-error");
@@ -180,7 +183,7 @@
                 localStorage.setItem("synapse_user", JSON.stringify(data.user));
 
                 showAlert("success", "Admin verified! Entering dashboard...");
-                setTimeout(() => { window.location.href = "admin.html"; }, 800);
+                setTimeout(() => { window.location.replace("admin.html"); }, 800);
 
             } catch (error) {
                 showAlert("error", error.message);

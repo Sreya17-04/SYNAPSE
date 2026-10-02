@@ -4,13 +4,14 @@
 // Matched specifically to admin.html
 // =====================================================
 
-const API = "http://localhost:5000";
+// SYNAPSE_API_URL comes from config.js, loaded just before this file.
+const API = SYNAPSE_API_URL;
 
 // =====================================================
 // AUTH
 // =====================================================
 
-const token = localStorage.getItem("synapse_token");
+let token = localStorage.getItem("synapse_token");
 const userRole = localStorage.getItem("synapse_role");
 
 let adminUser = null;
@@ -47,22 +48,154 @@ document.addEventListener("DOMContentLoaded", () => {
 // AUTHENTICATED FETCH
 // =====================================================
 
+// A 401 here means the token expired or was revoked by a logout elsewhere.
+// Clear the local session and bounce to the admin login in one place.
 async function adminFetch(url, options = {}) {
     const headers = {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`,
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...(options.headers || {})
     };
 
-    return fetch(url, {
-        ...options,
-        headers
-    });
+    const response = await fetch(url, { ...options, headers });
+
+    if (response.status === 401) {
+        localStorage.removeItem("synapse_token");
+        localStorage.removeItem("synapse_role");
+        localStorage.removeItem("synapse_user");
+
+        window.location.replace("admin-login.html");
+
+        throw new Error("Session expired. Please log in again.");
+    }
+
+    return response;
+}
+
+// Reads a JSON error message without assuming the body is JSON; a non-JSON
+// 5xx body makes response.json() throw and hides the real status.
+async function readError(response, fallback) {
+    try {
+        const text = await response.text();
+
+        if (!text) {
+            return fallback;
+        }
+
+        try {
+            const data = JSON.parse(text);
+
+            return data.message || fallback;
+        } catch {
+            return fallback;
+        }
+    } catch {
+        return fallback;
+    }
+}
+
+// 401 is already handled globally inside adminFetch. A 403 means the account
+// is no longer an admin, which that path cannot infer, so handle it here and
+// share the cleanup with it.
+function handleAdminAuthFailure() {
+    localStorage.removeItem("synapse_token");
+    localStorage.removeItem("synapse_role");
+    localStorage.removeItem("synapse_user");
+
+    window.location.replace("admin-login.html");
+}
+
+// =====================================================
+// STATUS BADGE
+// =====================================================
+
+// post.status comes straight from the database and was interpolated raw into
+// both a class attribute and a text node. The Mongoose enum currently limits
+// it, but a whitelist is the only thing that makes this safe by construction
+// rather than by convention.
+const VALID_STATUSES = ["active", "flagged", "approved"];
+
+function statusBadge(status) {
+    const safe =
+        VALID_STATUSES.includes(status)
+            ? status
+            : "active";
+
+    return `<span class="badge-status ${safe}">
+                        ${escapeHTML(safe.toUpperCase())}
+                    </span>`;
+}
+
+// =====================================================
+// PAGINATED ADMIN LIST FETCHER
+// =====================================================
+
+const ADMIN_PAGE_SIZE = 200;
+
+// The admin list endpoints are paginated server-side so one request cannot
+// dump the whole collection. The moderation UI filters and renders the full
+// set client-side, so walk every page here rather than silently moderating
+// only the first page.
+async function fetchAllPages(url, key) {
+    const collected = [];
+    let page = 1;
+    let total = Infinity;
+
+    while (collected.length < total && page <= 25) {
+        const separator = url.includes("?") ? "&" : "?";
+
+        const response = await adminFetch(
+            `${url}${separator}page=${page}&limit=${ADMIN_PAGE_SIZE}`
+        );
+
+        if (!response.ok) {
+            throw new Error(
+                await readError(
+                    response,
+                    `Request failed: ${response.status}`
+                )
+            );
+        }
+
+        const data = await response.json();
+        const items = Array.isArray(data)
+            ? data
+            : (data[key] || []);
+
+        collected.push(...items);
+
+        total = Number.isFinite(data.total)
+            ? data.total
+            : collected.length;
+
+        if (items.length === 0) {
+            break;
+        }
+
+        page += 1;
+    }
+
+    if (collected.length < total) {
+        showToast(
+            `Showing the first ${collected.length} of ${total} records.`,
+            "info"
+        );
+    }
+
+    return collected;
 }
 
 // =====================================================
 // ELEMENT HELPERS
 // =====================================================
+
+// Shared by both modals so keyboard focus can be cycled inside a dialog.
+const FOCUSABLE_SELECTOR =
+    'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+// The control that opened the post-preview dialog, so focus can be handed
+// back to it on close.
+let adminModalOpener = null;
 
 function get(id) {
     return document.getElementById(id);
@@ -286,7 +419,20 @@ function setupLogout() {
 
     logoutButton.addEventListener(
         "click",
-        () => {
+        async () => {
+
+            try {
+                // Retire the token server-side so a copy that escapes this
+                // tab cannot be replayed until it expires.
+                await fetch(`${API}/api/auth/logout`, {
+                    method: "POST",
+                    headers: {
+                        Authorization: `Bearer ${token}`
+                    }
+                });
+            } catch {
+                // Never trap the admin in a stale session.
+            }
 
             localStorage.removeItem(
                 "synapse_token"
@@ -300,8 +446,9 @@ function setupLogout() {
                 "synapse_user"
             );
 
-            window.location.href =
-                "admin-login.html";
+            window.location.replace(
+                "admin-login.html"
+            );
         }
     );
 }
@@ -310,39 +457,21 @@ function setupLogout() {
 // BACK TO COMMUNITY
 // =====================================================
 
+// The "← Back to Community" link is a plain <a href="index.html">, so the
+// browser handles navigation. The only thing worth doing in JS is closing
+// the profile dropdown, which would otherwise stay open under the new page
+// during the transition.
 function setupBackToCommunity() {
-
-    // Your HTML already has:
-    // <a href="index.html" class="nav-link">
-    //     ← Back to Community
-    // </a>
-
-    // We intentionally DO NOT prevent the default
-    // navigation.
-
     const links =
         document.querySelectorAll(
             'a[href="index.html"]'
         );
 
     links.forEach((link) => {
-
-        link.addEventListener(
-            "click",
-            () => {
-
-                // Close dropdown if open
-                const dropdown =
-                    get("admin-dropdown");
-
-                if (dropdown) {
-                    dropdown.classList.remove("show");
-                }
-
-                // Let browser navigate normally
-            }
-        );
-
+        link.addEventListener("click", () => {
+            get("admin-dropdown")
+                ?.classList.remove("show");
+        });
     });
 }
 
@@ -370,46 +499,59 @@ function setupTabs() {
 
     tabButtons.forEach((button) => {
 
-        button.addEventListener(
-            "click",
-            () => {
+        const activateTab = () => {
 
-                const tab =
-                    button.dataset.tab;
+            const tab =
+                button.dataset.tab;
 
-                currentTab = tab;
+            currentTab = tab;
 
-                // Remove active from all buttons
-                tabButtons.forEach((btn) => {
-                    btn.classList.remove("active");
-                });
+            // Remove active + selection state from all buttons
+            tabButtons.forEach((btn) => {
+                btn.classList.remove("active");
+                btn.setAttribute(
+                    "aria-selected",
+                    "false"
+                );
+                btn.setAttribute("tabindex", "-1");
+            });
 
-                // Activate selected button
-                button.classList.add("active");
+            // Activate selected button
+            button.classList.add("active");
 
-                // Hide all panels
-                panels.forEach((panel) => {
+            button.setAttribute(
+                "aria-selected",
+                "true"
+            );
 
-                    panel.style.display = "none";
-                    panel.classList.remove(
-                        "active-panel"
-                    );
+            button.setAttribute("tabindex", "0");
 
-                });
+            // Hide all panels
+            panels.forEach((panel) => {
 
-                // Show selected panel
-                const selectedPanel =
-                    get(`panel-${tab}`);
+                panel.style.display = "none";
+                panel.classList.remove(
+                    "active-panel"
+                );
 
-                if (selectedPanel) {
+                panel.setAttribute("hidden", "");
+            });
 
-                    selectedPanel.style.display =
-                        "block";
+            // Show selected panel
+            const selectedPanel =
+                get(`panel-${tab}`);
 
-                    selectedPanel.classList.add(
-                        "active-panel"
-                    );
-                }
+            if (selectedPanel) {
+
+                selectedPanel.style.display =
+                    "block";
+
+                selectedPanel.classList.add(
+                    "active-panel"
+                );
+
+                selectedPanel.removeAttribute("hidden");
+            }
 
                 // Render current content
                 if (tab === "dashboard") {
@@ -422,6 +564,10 @@ function setupTabs() {
                     );
                 }
 
+                if (tab === "announcements") {
+                    renderAnnouncementsTable();
+                }
+
                 if (tab === "users") {
                     renderUsersTable(
                         get("users-search")?.value || ""
@@ -431,10 +577,41 @@ function setupTabs() {
                 if (tab === "flagged") {
                     renderFlaggedTable();
                 }
+        };
 
+        button.addEventListener("click", activateTab);
+
+        // Roving tabindex: arrow keys move between tabs, per the WAI-ARIA
+        // tabs pattern.
+        button.addEventListener("keydown", (event) => {
+            const index =
+                [...tabButtons].indexOf(button);
+
+            let nextIndex = null;
+
+            if (event.key === "ArrowRight") {
+                nextIndex = (index + 1) % tabButtons.length;
+            } else if (event.key === "ArrowLeft") {
+                nextIndex =
+                    (index - 1 + tabButtons.length) %
+                    tabButtons.length;
+            } else if (event.key === "Home") {
+                nextIndex = 0;
+            } else if (event.key === "End") {
+                nextIndex = tabButtons.length - 1;
             }
-        );
 
+            if (nextIndex === null) {
+                return;
+            }
+
+            event.preventDefault();
+
+            const nextButton = tabButtons[nextIndex];
+
+            nextButton.focus();
+            nextButton.click();
+        });
     });
 }
 
@@ -444,6 +621,7 @@ function setupTabs() {
 
 let allAdminPosts = [];
 let allUsers = [];
+let allAnnouncements = [];
 
 // =====================================================
 // FETCH DASHBOARD STATS
@@ -469,8 +647,7 @@ async function fetchStats() {
             );
 
             setTimeout(() => {
-                window.location.href =
-                    "admin-login.html";
+                handleAdminAuthFailure();
             }, 800);
 
             return;
@@ -552,14 +729,8 @@ async function fetchAdminPosts() {
                 `${API}/api/admin/posts`
             );
 
-        if (
-            response.status === 401 ||
-            response.status === 403
-        ) {
-
-            window.location.href =
-                "admin-login.html";
-
+        if (response.status === 403) {
+            handleAdminAuthFailure();
             return;
         }
 
@@ -570,19 +741,12 @@ async function fetchAdminPosts() {
         }
 
         const data =
-            await response.json();
+            await fetchAllPages(
+                `${API}/api/admin/posts`,
+                "posts"
+            );
 
-        // Handle either:
-        // [posts]
-        // OR { posts: [...] }
-
-        if (Array.isArray(data)) {
-            allAdminPosts = data;
-        } else if (Array.isArray(data.posts)) {
-            allAdminPosts = data.posts;
-        } else {
-            allAdminPosts = [];
-        }
+        allAdminPosts = data;
 
         renderDashboardPreview();
         renderPostsTable(
@@ -632,14 +796,8 @@ async function fetchUsers() {
                 `${API}/api/admin/users`
             );
 
-        if (
-            response.status === 401 ||
-            response.status === 403
-        ) {
-
-            window.location.href =
-                "admin-login.html";
-
+        if (response.status === 403) {
+            handleAdminAuthFailure();
             return;
         }
 
@@ -650,19 +808,12 @@ async function fetchUsers() {
         }
 
         const data =
-            await response.json();
+            await fetchAllPages(
+                `${API}/api/admin/users`,
+                "users"
+            );
 
-        // Handle:
-        // [users]
-        // OR { users: [...] }
-
-        if (Array.isArray(data)) {
-            allUsers = data;
-        } else if (Array.isArray(data.users)) {
-            allUsers = data.users;
-        } else {
-            allUsers = [];
-        }
+        allUsers = data;
 
         renderUsersTable(
             get("users-search")?.value || ""
@@ -680,6 +831,163 @@ async function fetchUsers() {
             "error"
         );
     }
+}
+
+// =====================================================
+// FETCH ANNOUNCEMENTS
+// =====================================================
+
+async function fetchAnnouncements() {
+    try {
+        const response = await adminFetch(
+            `${API}/api/admin/announcements`
+        );
+
+        if (response.status === 403) {
+            handleAdminAuthFailure();
+            return;
+        }
+
+        if (!response.ok) {
+            throw new Error(
+                `Announcements request failed: ${response.status}`
+            );
+        }
+
+        const data = await response.json();
+        allAnnouncements = Array.isArray(data) ? data : [];
+        renderAnnouncementsTable();
+    } catch (error) {
+        console.error("Announcements error:", error);
+        showToast("Could not load announcements.", "error");
+    }
+}
+
+function renderAnnouncementsTable() {
+    const tbody = get("announcements-tbody");
+
+    if (!tbody) return;
+
+    if (allAnnouncements.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="4" style="text-align:center;padding:2rem;color:var(--text-muted);">
+                    No announcements yet.
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    tbody.innerHTML = allAnnouncements.map(announcement => {
+        const date = announcement.createdAt
+            ? new Date(announcement.createdAt).toLocaleDateString("en-IN", {
+                day: "numeric",
+                month: "short",
+                year: "numeric"
+            })
+            : "—";
+
+        return `
+            <tr>
+                <td><strong>${escapeHTML(announcement.title)}</strong></td>
+                <td>${escapeHTML(announcement.message)}</td>
+                <td>${date}</td>
+                <td>
+                    <button class="btn-table-action btn-delete" data-announcement-id="${announcement._id}" type="button">
+                        Delete
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join("");
+
+    tbody.querySelectorAll("[data-announcement-id]").forEach(button => {
+        button.addEventListener("click", async () => {
+            if (!window.confirm("Delete this announcement?")) return;
+
+            try {
+                const response = await adminFetch(
+                    `${API}/api/admin/announcements/${button.dataset.announcementId}`,
+                    { method: "DELETE" }
+                );
+
+                // Read the body defensively: a 500 from a crash or proxy may
+                // not be JSON, and response.json() would then throw and mask
+                // the real failure.
+                if (!response.ok) {
+                    throw new Error(
+                        await readError(
+                            response,
+                            "Failed to delete announcement."
+                        )
+                    );
+                }
+
+                const data = await response.json();
+
+                showToast(
+                    data.message ||
+                    "Announcement deleted.",
+                    "success"
+                );
+
+                await fetchAnnouncements();
+            } catch (error) {
+                console.error("Announcement delete error:", error);
+                showToast(error.message, "error");
+            }
+        });
+    });
+}
+
+function setupAnnouncementForm() {
+    const form = get("announcement-form");
+
+    if (!form) return;
+
+    form.addEventListener("submit", async event => {
+        event.preventDefault();
+
+        const titleInput = get("announcement-title");
+        const messageInput = get("announcement-message");
+        const submitButton = form.querySelector("button[type='submit']");
+
+        submitButton.disabled = true;
+
+        try {
+            const response = await adminFetch(
+                `${API}/api/admin/announcements`,
+                {
+                    method: "POST",
+                    body: JSON.stringify({
+                        title: titleInput.value.trim(),
+                        message: messageInput.value.trim()
+                    })
+                }
+            );
+
+            if (!response.ok) {
+                throw new Error(
+                    await readError(
+                        response,
+                        "Failed to create announcement."
+                    )
+                );
+            }
+
+            const data = await response.json();
+
+            form.reset();
+            showToast("Announcement published.", "success");
+            await fetchAnnouncements();
+        } catch (error) {
+            console.error("Announcement create error:", error);
+            showToast(error.message, "error");
+        } finally {
+            submitButton.disabled = false;
+        }
+    });
 }
 
 // =====================================================
@@ -760,9 +1068,7 @@ function renderDashboardPreview() {
                                 </td>
 
                                 <td>
-                                    <span class="badge-status ${status}">
-                                        ${status.toUpperCase()}
-                                    </span>
+                                    ${statusBadge(status)}
                                 </td>
 
                                 <td>
@@ -900,9 +1206,7 @@ function renderPostsTable(searchTerm = "") {
                     </td>
 
                     <td>
-                        <span class="badge-status ${status}">
-                            ${status.toUpperCase()}
-                        </span>
+                        ${statusBadge(status)}
                     </td>
 
                     <td>
@@ -1494,6 +1798,9 @@ function openPostModal(post) {
     const modal =
         get("admin-modal");
 
+    // Remember the trigger so setupModal's close handler can restore focus.
+    adminModalOpener = document.activeElement;
+
     const title =
         get("admin-modal-title");
 
@@ -1637,6 +1944,13 @@ function openPostModal(post) {
         );
 
     modal.classList.add("show");
+
+    // Hand focus into the dialog so the next Tab stays inside it.
+    modal
+        .querySelector(
+            FOCUSABLE_SELECTOR
+        )
+        ?.focus();
 }
 
 // =====================================================
@@ -1655,11 +1969,22 @@ function setupModal() {
         return;
     }
 
+    // aria-modal="true" was declared but focus was never trapped, so Tab
+    // walked out into the inert dashboard behind the dialog. Track the
+    // trigger so focus can be restored on close.
+    const closeModal = () => {
+        if (!modal.classList.contains("show")) {
+            return;
+        }
+
+        modal.classList.remove("show");
+
+        adminModalOpener?.focus();
+    };
+
     closeButton?.addEventListener(
         "click",
-        () => {
-            modal.classList.remove("show");
-        }
+        closeModal
     );
 
     modal.addEventListener(
@@ -1667,7 +1992,7 @@ function setupModal() {
         (event) => {
 
             if (event.target === modal) {
-                modal.classList.remove("show");
+                closeModal();
             }
 
         }
@@ -1678,11 +2003,40 @@ function setupModal() {
         (event) => {
 
             if (event.key === "Escape") {
-                modal.classList.remove(
-                    "show"
-                );
+                closeModal();
+                return;
             }
 
+            if (event.key !== "Tab" ||
+                !modal.classList.contains("show")) {
+                return;
+            }
+
+            const focusable = [
+                ...modal.querySelectorAll(
+                    FOCUSABLE_SELECTOR
+                )
+            ].filter(
+                el => el.offsetParent !== null
+            );
+
+            if (focusable.length === 0) {
+                return;
+            }
+
+            const first = focusable[0];
+            const last =
+                focusable[focusable.length - 1];
+
+            if (event.shiftKey &&
+                document.activeElement === first) {
+                event.preventDefault();
+                last.focus();
+            } else if (!event.shiftKey &&
+                document.activeElement === last) {
+                event.preventDefault();
+                first.focus();
+            }
         }
     );
 }
@@ -1751,7 +2105,8 @@ function setupRefresh() {
                 await Promise.all([
                     fetchStats(),
                     fetchAdminPosts(),
-                    fetchUsers()
+                    fetchUsers(),
+                    fetchAnnouncements()
                 ]);
 
                 showToast(
@@ -1799,11 +2154,14 @@ async function initAdminDashboard() {
 
     setupRefresh();
 
+    setupAnnouncementForm();
+
     // Load dashboard data
     await Promise.all([
         fetchStats(),
         fetchAdminPosts(),
-        fetchUsers()
+        fetchUsers(),
+        fetchAnnouncements()
     ]);
 
     console.log(

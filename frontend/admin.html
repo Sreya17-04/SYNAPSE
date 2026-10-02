@@ -5,7 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SYNAPSE – Admin Moderation Panel</title>
-    <link rel="stylesheet" href="style.css">
+    <!-- admin.css already @imports style.css, so linking both loaded the
+         entire design system twice and blocked first paint on the @import. -->
     <link rel="stylesheet" href="admin.css">
 </head>
 
@@ -51,17 +52,25 @@
     <!-- ================= ADMIN LAYOUT ================= -->
     <div class="admin-layout">
         <!-- SIDEBAR -->
-        <aside class="admin-sidebar">
-            <button class="admin-nav-item active" id="tab-dashboard" data-tab="dashboard" type="button">
+        <aside class="admin-sidebar" role="tablist" aria-orientation="vertical" aria-label="Admin sections">
+            <button class="admin-nav-item active" id="tab-dashboard" data-tab="dashboard" type="button"
+                role="tab" aria-selected="true" aria-controls="panel-dashboard" tabindex="0">
                 <span>📊</span> Dashboard
             </button>
-            <button class="admin-nav-item" id="tab-posts" data-tab="posts" type="button">
+            <button class="admin-nav-item" id="tab-posts" data-tab="posts" type="button"
+                role="tab" aria-selected="false" aria-controls="panel-posts" tabindex="-1">
                 <span>📝</span> Posts
             </button>
-            <button class="admin-nav-item" id="tab-users" data-tab="users" type="button">
+            <button class="admin-nav-item" id="tab-announcements" data-tab="announcements" type="button"
+                role="tab" aria-selected="false" aria-controls="panel-announcements" tabindex="-1">
+                <span>📢</span> Announcements
+            </button>
+            <button class="admin-nav-item" id="tab-users" data-tab="users" type="button"
+                role="tab" aria-selected="false" aria-controls="panel-users" tabindex="-1">
                 <span>👥</span> Users
             </button>
-            <button class="admin-nav-item" id="tab-flagged" data-tab="flagged" type="button">
+            <button class="admin-nav-item" id="tab-flagged" data-tab="flagged" type="button"
+                role="tab" aria-selected="false" aria-controls="panel-flagged" tabindex="-1">
                 <span>⚠️</span> Flagged (<span id="flagged-count">0</span>)
             </button>
         </aside>
@@ -70,7 +79,7 @@
         <main class="admin-content">
 
             <!-- ===== DASHBOARD TAB ===== -->
-            <div id="panel-dashboard" class="admin-panel active-panel">
+            <div id="panel-dashboard" class="admin-panel active-panel" role="tabpanel" aria-labelledby="tab-dashboard" tabindex="0">
                 <div class="admin-header-title">
                     <h1>Community Overview</h1>
                     <p>Manage discussions, moderate content, and monitor community health.</p>
@@ -118,7 +127,7 @@
             </div>
 
             <!-- ===== POSTS TAB ===== -->
-            <div id="panel-posts" class="admin-panel" style="display:none;">
+            <div id="panel-posts" class="admin-panel" role="tabpanel" aria-labelledby="tab-posts" tabindex="0" style="display:none;">
                 <div class="admin-header-title">
                     <h1>Posts Management</h1>
                     <p>Review, moderate and delete community posts.</p>
@@ -126,20 +135,19 @@
                 <div class="table-card">
                     <div class="table-card-header">
                         <h2>All Posts</h2>
-                        <input type="text" id="posts-search" class="admin-search" placeholder="Search posts...">
+                        <input type="text" id="posts-search" class="admin-search" placeholder="Search posts..." aria-label="Search posts by title, author or category">
                     </div>
                     <div style="overflow-x:auto;">
                         <table class="admin-table">
-                            <thead>
-                                <tr>
-                                    <th>Title</th>
-                                    <th>Author</th>
-                                    <th>Category</th>
-                                    <th>Likes</th>
-                                    <th>Comments</th>
-                                    <th>Status</th>
-                                    <th>Date</th>
-                                    <th>Actions</th>
+                            <thead><tr>
+                                    <th scope="col">Title</th>
+                                    <th scope="col">Author</th>
+                                    <th scope="col">Category</th>
+                                    <th scope="col">Likes</th>
+                                    <th scope="col">Comments</th>
+                                    <th scope="col">Status</th>
+                                    <th scope="col">Date</th>
+                                    <th scope="col">Actions</th>
                                 </tr>
                             </thead>
                             <tbody id="posts-tbody"></tbody>
@@ -148,8 +156,51 @@
                 </div>
             </div>
 
+            <!-- ===== ANNOUNCEMENTS TAB ===== -->
+            <div id="panel-announcements" class="admin-panel" role="tabpanel" aria-labelledby="tab-announcements" tabindex="0" style="display:none;">
+                <div class="admin-header-title">
+                    <h1>Announcements</h1>
+                    <p>Publish updates that appear in the community sidebar.</p>
+                </div>
+
+                <div class="announcement-admin-grid">
+                    <div class="table-card">
+                        <div class="table-card-header">
+                            <h2>Add Announcement</h2>
+                        </div>
+                        <form id="announcement-form" class="announcement-form">
+                            <label for="announcement-title">Title</label>
+                            <input id="announcement-title" type="text" maxlength="120" required>
+
+                            <label for="announcement-message">Message</label>
+                            <textarea id="announcement-message" maxlength="500" rows="5" required></textarea>
+
+                            <button class="btn-create-post-banner" type="submit">Publish Announcement</button>
+                        </form>
+                    </div>
+
+                    <div class="table-card">
+                        <div class="table-card-header">
+                            <h2>Published Announcements</h2>
+                        </div>
+                        <div style="overflow-x:auto;">
+                            <table class="admin-table">
+                                <thead><tr>
+                                        <th scope="col">Title</th>
+                                        <th scope="col">Message</th>
+                                        <th scope="col">Date</th>
+                                        <th scope="col">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="announcements-tbody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- ===== USERS TAB ===== -->
-            <div id="panel-users" class="admin-panel" style="display:none;">
+            <div id="panel-users" class="admin-panel" role="tabpanel" aria-labelledby="tab-users" tabindex="0" style="display:none;">
                 <div class="admin-header-title">
                     <h1>User Management</h1>
                     <p>View and manage all registered students.</p>
@@ -157,18 +208,17 @@
                 <div class="table-card">
                     <div class="table-card-header">
                         <h2>All Users</h2>
-                        <input type="text" id="users-search" class="admin-search" placeholder="Search users...">
+                        <input type="text" id="users-search" class="admin-search" placeholder="Search users..." aria-label="Search users by name or email">
                     </div>
                     <div style="overflow-x:auto;">
                         <table class="admin-table">
-                            <thead>
-                                <tr>
-                                    <th>Name</th>
-                                    <th>Email</th>
-                                    <th>Role</th>
-                                    <th>Joined</th>
-                                    <th>Status</th>
-                                    <th>Actions</th>
+                            <thead><tr>
+                                    <th scope="col">Name</th>
+                                    <th scope="col">Email</th>
+                                    <th scope="col">Role</th>
+                                    <th scope="col">Joined</th>
+                                    <th scope="col">Status</th>
+                                    <th scope="col">Actions</th>
                                 </tr>
                             </thead>
                             <tbody id="users-tbody"></tbody>
@@ -178,7 +228,7 @@
             </div>
 
             <!-- ===== FLAGGED TAB ===== -->
-            <div id="panel-flagged" class="admin-panel" style="display:none;">
+            <div id="panel-flagged" class="admin-panel" role="tabpanel" aria-labelledby="tab-flagged" tabindex="0" style="display:none;">
                 <div class="admin-header-title">
                     <h1>Flagged Content</h1>
                     <p>Posts that have been flagged for moderation review.</p>
@@ -187,12 +237,11 @@
                     <div class="table-card-header"><h2>Flagged Posts</h2></div>
                     <div style="overflow-x:auto;">
                         <table class="admin-table">
-                            <thead>
-                                <tr>
-                                    <th>Title</th>
-                                    <th>Author</th>
-                                    <th>Category</th>
-                                    <th>Actions</th>
+                            <thead><tr>
+                                    <th scope="col">Title</th>
+                                    <th scope="col">Author</th>
+                                    <th scope="col">Category</th>
+                                    <th scope="col">Actions</th>
                                 </tr>
                             </thead>
                             <tbody id="flagged-tbody"></tbody>
@@ -205,11 +254,11 @@
     </div>
 
     <!-- POST PREVIEW MODAL -->
-    <div class="modal-overlay" id="admin-modal" role="dialog" aria-modal="true">
+    <div class="modal-overlay" id="admin-modal" role="dialog" aria-modal="true" aria-labelledby="admin-modal-title">
         <div class="modal-card">
             <div class="modal-header">
                 <h3 id="admin-modal-title">Post Preview</h3>
-                <button id="admin-modal-close" class="modal-close-btn" type="button">&times;</button>
+                <button id="admin-modal-close" class="modal-close-btn" type="button" aria-label="Close post preview">&times;</button>
             </div>
             <div class="modal-body" id="admin-modal-body"></div>
         </div>
@@ -218,6 +267,7 @@
     <!-- TOAST CONTAINER -->
     <div id="toast-container" aria-live="polite"></div>
 
+    <script src="config.js"></script>
     <script src="admin.js"></script>
 </body>
 

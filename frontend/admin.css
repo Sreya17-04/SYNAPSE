@@ -3,7 +3,6 @@
    ===================================================== */
 
 @import url('style.css');
-
 .admin-body {
   background-color: var(--bg-primary);
   color: var(--text-primary);
@@ -132,6 +131,44 @@
   font-family: var(--font-display);
   font-size: 1.25rem;
   font-weight: 700;
+}
+
+.announcement-admin-grid {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.8fr) minmax(420px, 1.2fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.announcement-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.announcement-form label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.announcement-form input,
+.announcement-form textarea {
+  width: 100%;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-subtle);
+  color: var(--text-primary);
+  font: inherit;
+  resize: vertical;
+  margin-bottom: 0.4rem;
+}
+
+@media (max-width: 900px) {
+  .announcement-admin-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .admin-search {

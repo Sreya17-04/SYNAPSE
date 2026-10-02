@@ -22,7 +22,7 @@
             </div>
         </div>
 
-        <nav class="nav-links">
+        <nav class="nav-links" aria-label="Primary">
             <a href="#" class="nav-link active" id="nav-link-home">Home</a>
             <a href="#" class="nav-link" id="nav-link-explore">Explore</a>
 
@@ -33,12 +33,6 @@
                 <span class="search-icon">🔍</span>
                 <input type="text" id="search-input" placeholder="Search posts, authors..." aria-label="Search posts">
             </div>
-
-            <button class="icon-btn" id="notification-btn" type="button" title="Notifications"
-                aria-label="Notifications">
-                🔔
-                <span class="notification-badge"></span>
-            </button>
 
             <button class="icon-btn" id="theme-toggle" type="button" aria-label="Toggle dark/light mode"
                 title="Toggle Light/Dark Mode">
@@ -88,16 +82,16 @@
 
                 <div class="hero-stats">
                     <div class="stat-item">
-                        <span class="stat-number">1,240</span>
+                        <span class="stat-number" id="stat-members">—</span>
                         <span class="stat-label">Students</span>
                     </div>
                     <div class="stat-item">
-                        <span class="stat-number" id="stat-discussions">356</span>
+                        <span class="stat-number" id="stat-discussions">—</span>
                         <span class="stat-label">Discussions</span>
                     </div>
                     <div class="stat-item">
-                        <span class="stat-number">48</span>
-                        <span class="stat-label">Events</span>
+                        <span class="stat-number" id="stat-announcements">—</span>
+                        <span class="stat-label">Announcements</span>
                     </div>
                 </div>
             </div>
@@ -111,16 +105,16 @@
                 <div class="sidebar-box">
                     <div class="sidebar-heading">Navigation</div>
                     <div class="nav-menu">
-                        <button class="sidebar-btn active" id="nav-home" type="button">
+                        <button class="sidebar-btn active" id="nav-home" type="button" aria-current="page">
                             <span class="btn-icon">🏠</span> Home Feed
                         </button>
-                        <button class="sidebar-btn" id="nav-explore" type="button">
+                        <button class="sidebar-btn" id="nav-explore" type="button" aria-current="false">
                             <span class="btn-icon">🧭</span> Explore
                         </button>
-                        <button class="sidebar-btn" id="nav-saved" type="button">
+                        <button class="sidebar-btn" id="nav-saved" type="button" aria-current="false">
                             <span class="btn-icon">🔖</span> Saved Posts
                         </button>
-                        <button class="sidebar-btn" id="nav-myposts" type="button">
+                        <button class="sidebar-btn" id="nav-myposts" type="button" aria-current="false">
                             <span class="btn-icon">👤</span> My Posts
                         </button>
                     </div>
@@ -129,28 +123,28 @@
                 <div class="sidebar-box">
                     <div class="sidebar-heading">Categories</div>
                     <div class="nav-menu" id="category-list">
-                        <button class="sidebar-btn category-btn active" data-category="All" type="button">
+                        <button class="sidebar-btn category-btn" aria-pressed="true" data-category="All" type="button">
                             <span class="btn-icon">💬</span> All Posts
                         </button>
-                        <button class="sidebar-btn category-btn" data-category="Academic" type="button">
+                        <button class="sidebar-btn category-btn" aria-pressed="false" data-category="Academic" type="button">
                             <span class="btn-icon">📚</span> Academic
                         </button>
-                        <button class="sidebar-btn category-btn" data-category="Placement" type="button">
+                        <button class="sidebar-btn category-btn" aria-pressed="false" data-category="Placement" type="button">
                             <span class="btn-icon">💼</span> Placement
                         </button>
-                        <button class="sidebar-btn category-btn" data-category="Events" type="button">
+                        <button class="sidebar-btn category-btn" aria-pressed="false" data-category="Events" type="button">
                             <span class="btn-icon">📢</span> Events
                         </button>
-                        <button class="sidebar-btn category-btn" data-category="General" type="button">
+                        <button class="sidebar-btn category-btn" aria-pressed="false" data-category="General" type="button">
                             <span class="btn-icon">🌐</span> General
                         </button>
-                        <button class="sidebar-btn category-btn" data-category="Internships" type="button">
+                        <button class="sidebar-btn category-btn" aria-pressed="false" data-category="Internships" type="button">
                             <span class="btn-icon">🚀</span> Internships
                         </button>
-                        <button class="sidebar-btn category-btn" data-category="Projects" type="button">
+                        <button class="sidebar-btn category-btn" aria-pressed="false" data-category="Projects" type="button">
                             <span class="btn-icon">💻</span> Projects
                         </button>
-                        <button class="sidebar-btn category-btn" data-category="Other" type="button">
+                        <button class="sidebar-btn category-btn" aria-pressed="false" data-category="Other" type="button">
                             <span class="btn-icon">📌</span> Other
                         </button>
                     </div>
@@ -198,42 +192,15 @@
                 <div class="widget-card">
                     <div class="widget-title"><span>🔥</span> Trending Discussions</div>
                     <div class="trending-list" id="trending-list">
-                        <div class="trending-item">
-                            <span class="trending-rank">01</span>
-                            <div class="trending-details">
-                                <h4>Placement Preparation Guide 2026</h4>
-                                <span>128 interactions</span>
-                            </div>
-                        </div>
-                        <div class="trending-item">
-                            <span class="trending-rank">02</span>
-                            <div class="trending-details">
-                                <h4>DBMS &amp; OS Lab Notes Share</h4>
-                                <span>94 interactions</span>
-                            </div>
-                        </div>
-                        <div class="trending-item">
-                            <span class="trending-rank">03</span>
-                            <div class="trending-details">
-                                <h4>Summer Internship Opportunities</h4>
-                                <span>76 interactions</span>
-                            </div>
-                        </div>
+                        <div class="trending-item">Loading discussions...</div>
                     </div>
                 </div>
 
                 <!-- DEPARTMENT ANNOUNCEMENTS -->
                 <div class="widget-card">
                     <div class="widget-title"><span>📢</span> Announcements</div>
-                    <div class="announcements-list">
-                        <div class="announcement-item">
-                            <p>Internal Assessment Schedule published for CS &amp; IT.</p>
-                            <span>Today</span>
-                        </div>
-                        <div class="announcement-item">
-                            <p>Placement cell registration is now open for final years.</p>
-                            <span>2 days ago</span>
-                        </div>
+                    <div class="announcements-list" id="announcements-list">
+                        <div class="announcement-item">Loading announcements...</div>
                     </div>
                 </div>
 
@@ -300,6 +267,7 @@
     <div id="toast-container" aria-live="polite"></div>
 
     <!-- JAVASCRIPT -->
+    <script src="config.js"></script>
     <script src="script.js"></script>
 </body>
 

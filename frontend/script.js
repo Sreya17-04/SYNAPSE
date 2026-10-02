@@ -3,41 +3,94 @@
 // script.js
 // =====================================================
 
-const API_URL = "http://localhost:5000";
+// SYNAPSE_API_URL comes from config.js, loaded just before this file.
+const API_URL = SYNAPSE_API_URL;
 
 // =====================================================
 // AUTH
 // =====================================================
 
-const token = localStorage.getItem("synapse_token");
-const currentUser = JSON.parse(
+let token = localStorage.getItem("synapse_token");
+let currentUser = JSON.parse(
     localStorage.getItem("synapse_user") || "null"
 );
-const userRole = localStorage.getItem("synapse_role");
+let userRole = localStorage.getItem("synapse_role");
 
-if (!token || !currentUser) {
-    window.location.href = "login.html";
-}
+// Clears local auth state and bounces to the login page. Wrapped in a function
+// so every caller stops executing instead of falling through with a stale UI.
+function requireStudentSession() {
+    if (!token || !currentUser) {
+        localStorage.removeItem("synapse_token");
+        localStorage.removeItem("synapse_role");
+        localStorage.removeItem("synapse_user");
 
-if (userRole === "admin") {
-    window.location.href = "admin.html";
+        // replace() so Back does not return to a page that immediately
+        // redirects again.
+        window.location.replace("login.html");
+        return false;
+    }
+
+    if (userRole === "admin" || currentUser.role === "admin") {
+        window.location.replace("admin.html");
+        return false;
+    }
+
+    return true;
 }
 
 // =====================================================
 // AUTHORIZED FETCH
 // =====================================================
 
+// Every 401 means the token is expired, revoked by a logout elsewhere, or the
+// account was suspended. Handle it in one place instead of per-caller.
 async function authFetch(url, options = {}) {
     const headers = {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`,
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...(options.headers || {})
     };
 
-    return fetch(url, {
-        ...options,
-        headers
-    });
+    const response = await fetch(url, { ...options, headers });
+
+    if (response.status === 401) {
+        handleSessionExpired();
+
+        throw new Error("Session expired. Please log in again.");
+    }
+
+    return response;
+}
+
+function handleSessionExpired() {
+    localStorage.removeItem("synapse_token");
+    localStorage.removeItem("synapse_role");
+    localStorage.removeItem("synapse_user");
+
+    window.location.replace("login.html");
+}
+
+// Reads a JSON error message without assuming the body is JSON. A proxy or a
+// crash can return HTML, and response.json() on that throws and hides the
+// real status.
+async function readError(response, fallback) {
+    try {
+        const text = await response.text();
+
+        if (!text) {
+            return fallback;
+        }
+
+        try {
+            const data = JSON.parse(text);
+
+            return data.message || fallback;
+        } catch {
+            return fallback;
+        }
+    } catch {
+        return fallback;
+    }
 }
 
 // =====================================================
@@ -67,6 +120,11 @@ const profileDropdown = document.getElementById("profile-dropdown");
 
 const toastContainer = document.getElementById("toast-container");
 const statDiscussions = document.getElementById("stat-discussions");
+const statMembers = document.getElementById("stat-members");
+const statAnnouncements = document.getElementById("stat-announcements");
+const trendingList = document.getElementById("trending-list");
+const announcementsList = document.getElementById("announcements-list");
+const feedSubtitle = document.getElementById("feed-subtitle");
 
 const navHome = document.getElementById("nav-home");
 const navExplore = document.getElementById("nav-explore");
@@ -311,12 +369,23 @@ document.getElementById("menu-saved-posts")?.addEventListener("click", () => {
 // LOGOUT
 // =====================================================
 
-document.getElementById("menu-logout")?.addEventListener("click", () => {
+document.getElementById("menu-logout")?.addEventListener("click", async () => {
+    try {
+        // Ask the server to bump tokenVersion first, so a copy of the token
+        // that survives this tab cannot be replayed until it expires.
+        await fetch(`${API_URL}/api/auth/logout`, {
+            method: "POST",
+            headers: { Authorization: `Bearer ${token}` }
+        });
+    } catch {
+        // Network failure must not trap the user in a stale session.
+    }
+
     localStorage.removeItem("synapse_token");
     localStorage.removeItem("synapse_role");
     localStorage.removeItem("synapse_user");
 
-    window.location.href = "login.html";
+    window.location.replace("login.html");
 });
 
 // =====================================================
@@ -358,7 +427,9 @@ async function loadPosts() {
     try {
         renderSkeletons();
 
-        const response = await fetch(`${API_URL}/api/posts`);
+        // Sent with the request so the server can mark which posts are the
+        // caller's own (the public feed no longer exposes authorEmail).
+        const response = await authFetch(`${API_URL}/api/posts`);
 
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}`);
@@ -366,13 +437,19 @@ async function loadPosts() {
 
         allPosts = await response.json();
 
-        if (statDiscussions) {
-            statDiscussions.textContent = allPosts.length;
-        }
-
         displayPosts();
 
+        await Promise.all([
+            loadTopDiscussions(),
+            loadAnnouncements(),
+            loadCommunityStats()
+        ]);
+
     } catch (error) {
+        if (error.message.startsWith("Session expired")) {
+            return;
+        }
+
         console.error("Error loading posts:", error);
 
         postsContainer.innerHTML = `
@@ -380,8 +457,8 @@ async function loadPosts() {
                 <div class="empty-icon">⚠️</div>
                 <h3>Unable to Load Posts</h3>
                 <p>
-                    Make sure the SYNAPSE backend is running
-                    on port 5000.
+                    Could not reach the SYNAPSE API. Check that the
+                    backend is running and reload.
                 </p>
                 <button
                     class="btn-hero-primary"
@@ -398,16 +475,150 @@ async function loadPosts() {
             .getElementById("retry-posts-btn")
             ?.addEventListener("click", loadPosts);
 
-        showToast("Failed to connect to backend.", "error");
+        showToast("Failed to reach the server.", "error");
     }
+}
+
+// The hero stats were hardcoded placeholders (1,240 / 356 / 48). This reads
+// the real aggregate counts instead.
+async function loadCommunityStats() {
+    try {
+        const response = await fetch(`${API_URL}/api/stats`);
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const stats = await response.json();
+
+        if (statMembers) {
+            statMembers.textContent = formatCount(stats.students);
+        }
+
+        // The feed endpoint is capped at 100 posts, so use the server's true
+        // total rather than allPosts.length (which saturated at 100).
+        if (statDiscussions) {
+            statDiscussions.textContent = formatCount(stats.discussions);
+        }
+
+        if (statAnnouncements) {
+            statAnnouncements.textContent = formatCount(stats.announcements);
+        }
+    } catch (error) {
+        console.error("Error loading community stats:", error);
+    }
+}
+
+function formatCount(value) {
+    const count = Number(value) || 0;
+
+    return count >= 1000
+        ? `${(count / 1000).toFixed(1).replace(/\.0$/, "")}k`
+        : String(count);
+}
+
+async function loadTopDiscussions() {
+    if (!trendingList) return;
+
+    try {
+        const response = await fetch(`${API_URL}/api/top-discussions`);
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const discussions = await response.json();
+
+        if (!discussions.length) {
+            trendingList.innerHTML = "<div class=\"trending-item\">No top discussions yet.</div>";
+            return;
+        }
+
+        trendingList.innerHTML = discussions.map((discussion, index) => `
+            <div class="trending-item">
+                <span class="trending-rank">${String(index + 1).padStart(2, "0")}</span>
+                <div class="trending-details">
+                    <h4>${escapeHTML(discussion.title)}</h4>
+                    <span>${escapeHTML(discussion.likes ?? 0)} likes</span>
+                </div>
+            </div>
+        `).join("");
+    } catch (error) {
+        console.error("Error loading top discussions:", error);
+        trendingList.innerHTML = "<div class=\"trending-item\">Unable to load discussions.</div>";
+    }
+}
+
+async function loadAnnouncements() {
+    if (!announcementsList) return;
+
+    try {
+        const response = await fetch(`${API_URL}/api/announcements`);
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const announcements = await response.json();
+
+        if (!announcements.length) {
+            announcementsList.innerHTML = "<div class=\"announcement-item\">No announcements yet.</div>";
+            return;
+        }
+
+        announcementsList.innerHTML = announcements.map(announcement => `
+            <div class="announcement-item">
+                <p><strong>${escapeHTML(announcement.title)}</strong><br>${escapeHTML(announcement.message)}</p>
+                <span>${new Date(announcement.createdAt).toLocaleDateString("en-IN", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric"
+                })}</span>
+            </div>
+        `).join("");
+    } catch (error) {
+        console.error("Error loading announcements:", error);
+        announcementsList.innerHTML = "<div class=\"announcement-item\">Unable to load announcements.</div>";
+    }
+}
+
+// =====================================================
+// FEED SUBTITLE
+// =====================================================
+
+// #feed-subtitle existed in the markup but was never written to, so it always
+// showed its static placeholder regardless of filters.
+const VIEW_LABELS = {
+    home: "Latest discussions",
+    explore: "Most liked discussions",
+    saved: "Your saved discussions",
+    myposts: "Your discussions"
+};
+
+function updateFeedSubtitle(count) {
+    if (!feedSubtitle) return;
+
+    const label = VIEW_LABELS[activeView] || VIEW_LABELS.home;
+    const noun = count === 1 ? "post" : "posts";
+
+    let text = `${label} · ${count} ${noun}`;
+
+    if (selectedCategory !== "All") {
+        text += ` in ${selectedCategory}`;
+    }
+
+    if (currentSearch.trim()) {
+        text += ` matching "${currentSearch.trim()}"`;
+    }
+
+    feedSubtitle.textContent = text;
 }
 
 // =====================================================
 // DISPLAY POSTS
 // =====================================================
 
-function displayPosts() {
-    if (!postsContainer) return;
+function displayPosts() {    if (!postsContainer) return;
 
     let posts = [...allPosts];
 
@@ -423,11 +634,8 @@ function displayPosts() {
     }
 
     if (activeView === "myposts") {
-        posts = posts.filter(post =>
-            post.authorEmail === currentUser?.email ||
-            String(post.author || "").toLowerCase() ===
-            String(currentUser?.name || "").toLowerCase()
-        );
+        // isOwner is computed server-side now that authorEmail is not public.
+        posts = posts.filter(post => post.isOwner);
     }
 
     // Category filter
@@ -449,18 +657,23 @@ function displayPosts() {
         );
     }
 
-    // Sort
+    // Sort. "explore" is a real view, not an alias for home: it ranks by
+    // engagement instead of recency so the button does something.
+    const effectiveSort = activeView === "explore" ? "popular" : currentSort;
+
     posts.sort((a, b) => {
-        if (currentSort === "oldest") {
+        if (effectiveSort === "oldest") {
             return new Date(a.createdAt) - new Date(b.createdAt);
         }
 
-        if (currentSort === "popular") {
+        if (effectiveSort === "popular") {
             return (b.likes || 0) - (a.likes || 0);
         }
 
         return new Date(b.createdAt) - new Date(a.createdAt);
     });
+
+    updateFeedSubtitle(posts.length);
 
     // Empty state
     if (posts.length === 0) {
@@ -523,10 +736,8 @@ function renderPostCard(post, savedIds) {
     const likeCount = post.likes || 0;
     const commentCount = (post.comments || []).length;
 
-    const isMyPost =
-        post.authorEmail === currentUser?.email ||
-        String(post.author || "").toLowerCase() ===
-        String(currentUser?.name || "").toLowerCase();
+    // Server-computed: the public feed no longer exposes authorEmail.
+    const isMyPost = Boolean(post.isOwner);
 
     const card = document.createElement("article");
 
@@ -538,7 +749,7 @@ function renderPostCard(post, savedIds) {
 
             <div class="author-info">
                 <div class="author-avatar">
-                    ${getInitials(post.author)}
+                    ${escapeHTML(getInitials(post.author))}
                 </div>
 
                 <div class="author-meta">
@@ -547,7 +758,7 @@ function renderPostCard(post, savedIds) {
                     </span>
 
                     <span class="post-timestamp">
-                        ${timeAgo(post.createdAt)}
+                        ${escapeHTML(timeAgo(post.createdAt))}
                     </span>
                 </div>
             </div>
@@ -566,6 +777,7 @@ function renderPostCard(post, savedIds) {
                                 data-id="${post._id}"
                                 type="button"
                                 title="Delete post"
+                                aria-label="Delete your post ${escapeHTML(post.title)}"
                             >
                                 🗑️
                             </button>
@@ -592,6 +804,8 @@ function renderPostCard(post, savedIds) {
                     class="action-btn like-btn"
                     data-id="${post._id}"
                     type="button"
+                    aria-label="Like this post"
+                    aria-pressed="false"
                 >
                     👍
                     <span class="like-count">
@@ -603,6 +817,8 @@ function renderPostCard(post, savedIds) {
                     class="action-btn comment-btn"
                     data-id="${post._id}"
                     type="button"
+                    aria-label="Show ${commentCount} comments"
+                    aria-expanded="false"
                 >
                     💬
                     <span>
@@ -617,6 +833,7 @@ function renderPostCard(post, savedIds) {
                 <button
                     class="action-btn share-btn"
                     type="button"
+                    aria-label="Share this post"
                 >
                     🔗 Share
                 </button>
@@ -625,6 +842,8 @@ function renderPostCard(post, savedIds) {
                     class="action-btn save-btn ${isSaved ? "saved" : ""}"
                     data-id="${post._id}"
                     type="button"
+                    aria-pressed="${isSaved ? "true" : "false"}"
+                    aria-label="${isSaved ? "Remove from saved posts" : "Save this post"}"
                 >
                     🔖 ${isSaved ? "Saved" : "Save"}
                 </button>
@@ -653,12 +872,14 @@ function renderPostCard(post, savedIds) {
                     class="comment-input"
                     id="comment-input-${post._id}"
                     placeholder="Write a comment..."
+                    aria-label="Write a comment"
                 >
 
                 <button
                     type="button"
                     class="btn-submit-comment"
                     data-id="${post._id}"
+                    aria-label="Post your comment"
                 >
                     Post
                 </button>
@@ -685,10 +906,25 @@ function renderPostCard(post, savedIds) {
 
             if (!drawer) return;
 
-            drawer.style.display =
-                drawer.style.display === "none"
-                    ? "block"
-                    : "none";
+            const isHidden =
+                drawer.style.display === "none";
+
+            drawer.style.display = isHidden
+                ? "block"
+                : "none";
+
+            card
+                .querySelector(".comment-btn")
+                ?.setAttribute(
+                    "aria-expanded",
+                    isHidden ? "true" : "false"
+                );
+
+            if (isHidden) {
+                drawer
+                    .querySelector(".comment-input")
+                    ?.focus();
+            }
         });
 
     // Submit comment
@@ -749,9 +985,9 @@ function renderComments(comments) {
         .map(comment => `
             <div class="comment-item">
 
-                <div class="comment-avatar">
-                    ${getInitials(comment.author)}
-                </div>
+            <div class="comment-avatar">
+                ${escapeHTML(getInitials(comment.author))}
+            </div>
 
                 <div class="comment-content-wrap">
 
@@ -783,13 +1019,16 @@ async function toggleLike(postId, button) {
             }
         );
 
-        if (response.status === 401) {
-            showToast("Please log in again.", "error");
-            return;
-        }
-
         if (!response.ok) {
-            throw new Error("Failed to update like");
+            showToast(
+                await readError(
+                    response,
+                    "Could not update like."
+                ),
+                "error"
+            );
+
+            return;
         }
 
         const data = await response.json();
@@ -799,7 +1038,7 @@ async function toggleLike(postId, button) {
             button.innerHTML = `
                 ❤️
                 <span class="like-count">
-                    ${data.likes}
+                    ${escapeHTML(data.likes)}
                 </span>
             `;
         } else {
@@ -807,10 +1046,15 @@ async function toggleLike(postId, button) {
             button.innerHTML = `
                 👍
                 <span class="like-count">
-                    ${data.likes}
+                    ${escapeHTML(data.likes)}
                 </span>
             `;
         }
+
+        button.setAttribute(
+            "aria-pressed",
+            data.liked ? "true" : "false"
+        );
 
         const post = allPosts.find(
             item => item._id === postId
@@ -821,6 +1065,10 @@ async function toggleLike(postId, button) {
         }
 
     } catch (error) {
+        if (error.message.startsWith("Session expired")) {
+            return;
+        }
+
         console.error("Like error:", error);
         showToast("Could not update like.", "error");
     }
@@ -856,7 +1104,15 @@ async function submitComment(postId, card) {
         );
 
         if (!response.ok) {
-            throw new Error("Failed to post comment");
+            showToast(
+                await readError(
+                    response,
+                    "Failed to post comment."
+                ),
+                "error"
+            );
+
+            return;
         }
 
         const data = await response.json();
@@ -878,7 +1134,7 @@ async function submitComment(postId, card) {
 
             comment.innerHTML = `
                 <div class="comment-avatar">
-                    ${getInitials(data.comment.author)}
+                    ${escapeHTML(getInitials(data.comment.author))}
                 </div>
 
                 <div class="comment-content-wrap">
@@ -921,6 +1177,10 @@ async function submitComment(postId, card) {
         showToast("Comment posted!", "success");
 
     } catch (error) {
+        if (error.message.startsWith("Session expired")) {
+            return;
+        }
+
         console.error("Comment error:", error);
         showToast("Failed to post comment.", "error");
     } finally {
@@ -967,10 +1227,18 @@ function toggleSave(postId) {
 // =====================================================
 
 async function sharePost(post) {
+    // Deep-link to the post instead of sharing the generic feed URL, so the
+    // recipient lands on the right discussion.
+    const shareUrl = new URL(
+        window.location.href
+    );
+
+    shareUrl.hash = `post-${post._id}`;
+
     const shareData = {
         title: post.title,
         text: `${post.title} — SYNAPSE`,
-        url: window.location.href
+        url: shareUrl.toString()
     };
 
     if (navigator.share) {
@@ -984,17 +1252,17 @@ async function sharePost(post) {
 
     try {
         await navigator.clipboard.writeText(
-            `${post.title} — SYNAPSE`
+            shareUrl.toString()
         );
 
         showToast(
-            "Post copied to clipboard!",
+            "Link copied to clipboard!",
             "success"
         );
 
     } catch (error) {
         showToast(
-            "Could not copy post.",
+            "Could not copy link.",
             "error"
         );
     }
@@ -1028,20 +1296,17 @@ async function deletePost(postId) {
         );
 
         if (!response.ok) {
-            const data = await response.json();
             throw new Error(
-                data.message || "Failed to delete post"
+                await readError(
+                    response,
+                    "Failed to delete post"
+                )
             );
         }
 
         allPosts = allPosts.filter(
             item => item._id !== postId
         );
-
-        if (statDiscussions) {
-            statDiscussions.textContent =
-                allPosts.length;
-        }
 
         displayPosts();
 
@@ -1051,6 +1316,10 @@ async function deletePost(postId) {
         );
 
     } catch (error) {
+        if (error.message.startsWith("Session expired")) {
+            return;
+        }
+
         console.error("Delete error:", error);
 
         showToast(
@@ -1090,11 +1359,20 @@ document
 
             document
                 .querySelectorAll(".category-btn")
-                .forEach(btn =>
-                    btn.classList.remove("active")
-                );
+                .forEach(btn => {
+                    btn.classList.remove("active");
+                    btn.setAttribute(
+                        "aria-pressed",
+                        "false"
+                    );
+                });
 
             button.classList.add("active");
+
+            button.setAttribute(
+                "aria-pressed",
+                "true"
+            );
 
             selectedCategory =
                 button.dataset.category || "All";
@@ -1112,11 +1390,17 @@ function setActiveNav(element, view) {
 
     document
         .querySelectorAll(".sidebar-btn")
-        .forEach(button =>
-            button.classList.remove("active")
-        );
+        .forEach(button => {
+            button.classList.remove("active");
+            button.setAttribute(
+                "aria-current",
+                "false"
+            );
+        });
 
     element?.classList.add("active");
+
+    element?.setAttribute("aria-current", "page");
 
     activeView = view;
 
@@ -1124,15 +1408,21 @@ function setActiveNav(element, view) {
 
     document
         .querySelectorAll(".category-btn")
-        .forEach(button =>
-            button.classList.remove("active")
-        );
+        .forEach(button => {
+            button.classList.remove("active");
+            button.setAttribute(
+                "aria-pressed",
+                "false"
+            );
+        });
 
-    document
+    const allCategoryBtn = document
         .querySelector(
             '.category-btn[data-category="All"]'
-        )
-        ?.classList.add("active");
+        );
+
+    allCategoryBtn?.classList.add("active");
+    allCategoryBtn?.setAttribute("aria-pressed", "true");
 
     displayPosts();
 
@@ -1189,22 +1479,61 @@ heroExploreBtn?.addEventListener("click", () => {
 // CREATE POST MODAL
 // =====================================================
 
+// The modal declared aria-modal="true" but never trapped focus, so Tab
+// walked out into the inert page behind it. Track the trigger so focus can
+// be restored on close.
+let lastFocusedElement = null;
+
+const FOCUSABLE_SELECTOR =
+    'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
 function openModal() {
     if (!postModal) return;
 
+    lastFocusedElement = document.activeElement;
+
     postModal.classList.add("show");
 
-    document
-        .getElementById("title")
-        ?.focus();
+    document.getElementById("title")?.focus();
 }
 
 function closeModal() {
-    if (!postModal) return;
+    if (!postModal || !postModal.classList.contains("show")) {
+        return;
+    }
 
     postModal.classList.remove("show");
 
     postForm?.reset();
+
+    lastFocusedElement?.focus();
+}
+
+function trapModalFocus(event) {
+    if (event.key !== "Tab" || !postModal?.classList.contains("show")) {
+        return;
+    }
+
+    const focusable = [
+        ...postModal.querySelectorAll(
+            FOCUSABLE_SELECTOR
+        )
+    ].filter(el => el.offsetParent !== null);
+
+    if (focusable.length === 0) {
+        return;
+    }
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+
+    if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+    }
 }
 
 createPostBtn?.addEventListener(
@@ -1259,7 +1588,10 @@ document.addEventListener(
     event => {
         if (event.key === "Escape") {
             closeModal();
+            return;
         }
+
+        trapModalFocus(event);
     }
 );
 
@@ -1315,26 +1647,17 @@ postForm?.addEventListener(
             );
 
             if (response.status === 401) {
-                showToast(
-                    "Session expired. Please log in again.",
-                    "error"
-                );
-
-                setTimeout(() => {
-                    window.location.href =
-                        "login.html";
-                }, 1000);
+                handleSessionExpired();
 
                 return;
             }
 
             if (!response.ok) {
-                const data =
-                    await response.json();
-
                 throw new Error(
-                    data.message ||
-                    "Failed to publish post"
+                    await readError(
+                        response,
+                        "Failed to publish post"
+                    )
                 );
             }
 
@@ -1348,6 +1671,10 @@ postForm?.addEventListener(
             await loadPosts();
 
         } catch (error) {
+
+            if (error.message.startsWith("Session expired")) {
+                return;
+            }
 
             console.error(
                 "Create post error:",
@@ -1373,4 +1700,37 @@ postForm?.addEventListener(
 // INITIALIZE
 // =====================================================
 
-loadPosts();
+// Validate the cached token against the server before rendering. Previously
+// the page only checked that the keys existed in localStorage, so an expired
+// 7-day token left a fully populated UI on screen until the first write failed.
+(async function init() {
+    if (!requireStudentSession()) {
+        return;
+    }
+
+    try {
+        const response = await authFetch(`${API_URL}/api/auth/me`);
+
+        const data = await response.json();
+
+        // Trust the server's copy of the role over localStorage, which is
+        // user-writable and could claim admin.
+        currentUser = data.user;
+        userRole = data.user.role;
+
+        localStorage.setItem(
+            "synapse_user",
+            JSON.stringify(currentUser)
+        );
+        localStorage.setItem("synapse_role", userRole);
+
+    } catch (error) {
+        if (error.message.startsWith("Session expired")) {
+            return;
+        }
+
+        console.error("Session validation failed:", error);
+    }
+
+    await loadPosts();
+})();

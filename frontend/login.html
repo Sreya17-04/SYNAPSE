@@ -193,8 +193,8 @@
                 <h2>Student Login</h2>
                 <p>Welcome back! Sign in to your SYNAPSE account.</p>
 
-                <div class="alert-msg alert-error" id="alert-error"></div>
-                <div class="alert-msg alert-success" id="alert-success"></div>
+                <div class="alert-msg alert-error" id="alert-error" role="alert" aria-live="assertive"></div>
+                <div class="alert-msg alert-success" id="alert-success" role="alert" aria-live="assertive"></div>
 
                 <form id="login-form">
                     <div class="form-group">
@@ -219,16 +219,19 @@
         </div>
     </div>
 
+    <script src="config.js"></script>
+
+
     <script>
-        const API = "http://localhost:5000";
+        const API = SYNAPSE_API_URL;
 
         // Redirect if already logged in as student
         const token = localStorage.getItem("synapse_token");
         const role = localStorage.getItem("synapse_role");
         if (token && role === "student") {
-            window.location.href = "index.html";
+            window.location.replace("index.html");
         } else if (token && role === "admin") {
-            window.location.href = "admin.html";
+            window.location.replace("admin.html");
         }
 
         function showAlert(type, message) {
@@ -280,7 +283,7 @@
                 localStorage.setItem("synapse_user", JSON.stringify(data.user));
 
                 showAlert("success", "Login successful! Redirecting...");
-                setTimeout(() => { window.location.href = "index.html"; }, 800);
+                setTimeout(() => { window.location.replace("index.html"); }, 800);
 
             } catch (error) {
                 showAlert("error", error.message);
