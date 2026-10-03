@@ -26,6 +26,12 @@ const commentSchema = new mongoose.Schema(
             required: true,
             trim: true,
             maxlength: 2000
+        },
+        // Set when a comment is edited. Absent until the first edit, so the UI
+        // can distinguish "never edited" from "edited at the original time".
+        editedAt: {
+            type: Date,
+            default: null
         }
     },
     {

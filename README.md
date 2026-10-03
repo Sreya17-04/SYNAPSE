@@ -45,7 +45,56 @@ MONGO_URI_LOCAL=mongodb://127.0.0.1:27017/DeptCommunity
 Atlas requires your IP on the allowlist (Network Access → IP Access List).
 The seeder and server share one connection helper, so both behave the same.
 
+## Publishing on GitHub Pages
+
+GitHub Pages is **static only** — it can host `docs/` but not Express/MongoDB.
+The site therefore ships in two halves:
+
+| Half | Lives in | Hosted on |
+| --- | --- | --- |
+| Frontend | `docs/` (a copy of `frontend/`) | GitHub Pages |
+| API + DB | `backend/` | Render (or any Node host) + MongoDB Atlas |
+
+`frontend/` is the source of truth; `docs/` is what Pages publishes and what
+the backend serves locally. After editing `frontend/`, re-sync:
+
+```powershell
+Copy-Item frontend\* docs\ -Recurse -Force
+```
+
+### 1. Deploy the backend
+
+- Push the repo, then create a **Render Blueprint** from `render.yaml`
+  (Render → New → Blueprint), or run the backend anywhere Node runs.
+- Set `MONGO_URI` to your Atlas string and make sure your IP (or `0.0.0.0/0`
+  for a free cluster) is on the Atlas IP access list.
+- `CORS_ORIGINS` must list the Pages origin:
+  `https://sreya17-04.github.io` (already the default in `app.js`).
+- Check `https://<your-service>.onrender.com/api/health` returns
+  `{"status":"ok", ... "database":"connected"}`.
+
+### 2. Point the frontend at it
+
+Put the API URL in **one** place — `docs/config.js` (and `frontend/config.js`):
+
+```js
+const SYNAPSE_DEPLOYED_API_URL = "https://synapse-api.onrender.com";
+```
+
+Leave it `""` and the app keeps using `window.location.origin`, which is
+correct when the backend serves the pages itself (local dev).
+
+### 3. Turn on Pages
+
+1. Repo → **Settings → Pages → Source: GitHub Actions**.
+2. Push to `main`. `.github/workflows/deploy-pages.yml` uploads `docs/`.
+3. The site is live at `https://sreya17-04.github.io/SYNAPSE/`.
+
+All asset and navigation links are relative, so the `/SYNAPSE/` sub-path works
+without any changes.
+
 ## Configuration
+
 
 | Variable | Required | Notes |
 | --- | --- | --- |

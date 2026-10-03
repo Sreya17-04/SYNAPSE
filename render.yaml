@@ -1,0 +1,21 @@
+# Render blueprint - deploys the SYNAPSE API so the GitHub Pages frontend
+# has something to talk to. Create a Blueprint from this file in the Render
+# dashboard, or push and let Render detect it.
+services:
+  - type: web
+    name: synapse-api
+    runtime: node
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: node server.js
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: 22
+      - key: JWT_SECRET
+        generateValue: true
+      - key: MONGO_URI
+        sync: false # paste your Atlas connection string in the dashboard
+      - key: CORS_ORIGINS
+        value: https://sreya17-04.github.io

@@ -56,6 +56,15 @@ const userSchema = new mongoose.Schema(
             type: Number,
             default: 0,
         },
+
+        // Saved posts live on the account rather than in the browser, so the
+        // list follows the student to another device. Stale ids (a post that
+        // was deleted or hidden by a moderator) are filtered out on read
+        // rather than here, so the record self-heals over time.
+        savedPosts: {
+            type: [{ type: mongoose.Schema.Types.ObjectId, ref: "Post" }],
+            default: []
+        },
     },
     {
         timestamps: true,
