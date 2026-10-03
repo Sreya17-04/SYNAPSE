@@ -16,6 +16,7 @@ const ACTIONS = [
     "comment.deleted",
     "user.flagged",
     "user.unflagged",
+    "user.deleted",
     "announcement.created",
     "announcement.deleted",
     "report.resolved",

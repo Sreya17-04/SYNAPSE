@@ -307,6 +307,118 @@ router.patch("/users/:id/flag", async (req, res) => {
 });
 
 // ==========================================
+// DELETE /api/admin/users/:id
+// Permanently delete a student account and everything authored by it.
+// ==========================================
+router.delete("/users/:id", async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id);
+
+        if (!user) {
+            return res.status(404).json({ message: "User not found." });
+        }
+
+        // Same guard as flagging: admins are never removable from the panel.
+        if (user.role === "admin") {
+            return res.status(400).json({
+                message: "Admin accounts cannot be deleted."
+            });
+        }
+
+        // Defence in depth: an admin targeting their own id is already caught
+        // by the role guard above, but never let a request delete the session
+        // that is making it.
+        if (String(user._id) === String(req.user._id)) {
+            return res.status(400).json({
+                message: "You cannot delete your own account."
+            });
+        }
+
+        const email = (user.email || "").trim().toLowerCase();
+
+        // The account goes first so a later failure can never leave a live
+        // account whose content was already destroyed.
+        await User.deleteOne({ _id: user._id });
+
+        let deletedPosts = 0;
+        let removedComments = 0;
+        let removedLikes = 0;
+
+        // Everything below keys off the author email, so an account without
+        // one would match the empty-string default on other people's content.
+        if (email) {
+            // Authored posts, and the savedPosts entries pointing at them.
+            const authored = await Post.find({ authorEmail: email }).select("_id");
+            const postIds = authored.map((post) => post._id);
+            deletedPosts = postIds.length;
+
+            if (postIds.length > 0) {
+                await Post.deleteMany({ _id: { $in: postIds } });
+
+                await User.updateMany(
+                    { savedPosts: { $in: postIds } },
+                    { $pull: { savedPosts: { $in: postIds } } }
+                );
+            }
+
+            // Comments the user left on other people's posts.
+            const commentResult = await Post.updateMany(
+                { "comments.authorEmail": email },
+                { $pull: { comments: { authorEmail: email } } }
+            );
+            removedComments = commentResult.modifiedCount || 0;
+
+            // Likes given by the user. updateMany skips the pre-save hook, so
+            // the denormalised `likes` counter is recomputed from `likedBy`.
+            const liked = await Post.find({ likedBy: email }).select("_id");
+            removedLikes = liked.length;
+
+            if (liked.length > 0) {
+                const likedIds = liked.map((post) => post._id);
+
+                await Post.updateMany(
+                    { likedBy: email },
+                    { $pull: { likedBy: email } }
+                );
+
+                const refreshed = await Post.find({ _id: { $in: likedIds } })
+                    .select("likedBy");
+
+                await Promise.all(
+                    refreshed.map((post) =>
+                        Post.updateOne(
+                            { _id: post._id },
+                            { $set: { likes: post.likedBy.length } }
+                        )
+                    )
+                );
+            }
+        }
+
+        await AuditLog.record({
+            action: "user.deleted",
+            actor: req.user,
+            target: { type: "user", id: user._id, label: user.email },
+            details: {
+                name: user.name,
+                posts: deletedPosts,
+                comments: removedComments,
+                likes: removedLikes
+            },
+            req
+        });
+
+        res.status(200).json({
+            message: `Account ${user.email} deleted successfully.`,
+            deletedPosts
+        });
+    } catch (error) {
+        console.error("Admin delete user error:", error.message);
+        res.status(500).json({ message: "Failed to delete user." });
+    }
+});
+
+// ==========================================
 // GET /api/admin/reports
 // The moderation queue. Defaults to open reports only; pass ?status=all
 // to see resolved history.

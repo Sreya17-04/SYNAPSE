@@ -1383,6 +1383,13 @@ function renderUsersTable(searchTerm = "") {
 
                         </button>
 
+                        <button
+                            class="btn-table-action btn-delete"
+                            data-user-delete-id="${user._id}"
+                            type="button">
+                            Delete
+                        </button>
+
                     </td>
 
                 </tr>
@@ -1400,6 +1407,23 @@ function renderUsersTable(searchTerm = "") {
 
                     await toggleUserFlag(
                         button.dataset.userId
+                    );
+
+                }
+            );
+
+        });
+
+    tbody
+        .querySelectorAll("[data-user-delete-id]")
+        .forEach((button) => {
+
+            button.addEventListener(
+                "click",
+                async () => {
+
+                    await deleteUser(
+                        button.dataset.userDeleteId
                     );
 
                 }
@@ -1450,6 +1474,92 @@ async function toggleUserFlag(userId) {
 
         showToast(
             "Failed to update user.",
+            "error"
+        );
+    }
+}
+
+// =====================================================
+// DELETE USER
+// =====================================================
+
+async function deleteUser(userId) {
+
+    const user =
+        allUsers.find(
+            item =>
+                String(item._id) ===
+                String(userId)
+        );
+
+    const name =
+        user?.name || "this student";
+
+    const confirmed =
+        window.confirm(
+            `Delete "${name}"?\n\nThis permanently removes the account along with their posts, comments and likes. This cannot be undone.`
+        );
+
+    if (!confirmed) {
+        return;
+    }
+
+    try {
+
+        const response =
+            await adminFetch(
+                `${API}/api/admin/users/${userId}`,
+                {
+                    method: "DELETE"
+                }
+            );
+
+        if (!response.ok) {
+
+            const data =
+                await response.json()
+                    .catch(() => ({}));
+
+            throw new Error(
+                data.message ||
+                "Failed to delete user"
+            );
+        }
+
+        const data =
+            await response.json();
+
+        allUsers =
+            allUsers.filter(
+                item =>
+                    String(item._id) !==
+                    String(userId)
+            );
+
+        showToast(
+            data.message ||
+            "User deleted successfully.",
+            "success"
+        );
+
+        renderUsersTable(
+            get("users-search")?.value || ""
+        );
+
+        await fetchAdminPosts();
+
+        await fetchStats();
+
+    } catch (error) {
+
+        console.error(
+            "Delete user error:",
+            error
+        );
+
+        showToast(
+            error.message ||
+            "Failed to delete user.",
             "error"
         );
     }
