@@ -903,12 +903,18 @@ function renderPostCard(post, savedIds) {
 
             if (!drawer) return;
 
+            // The hidden state can come from the .is-hidden CSS class (fresh
+            // render) or from an inline style (after an earlier toggle).
+            // Reading drawer.style.display alone misses the class-based case,
+            // so the first click used to do nothing. Use the computed style.
             const isHidden =
-                drawer.style.display === "none";
+                window.getComputedStyle(drawer).display === "none";
 
             drawer.style.display = isHidden
                 ? "block"
                 : "none";
+
+            drawer.classList.toggle("is-hidden", !isHidden);
 
             card
                 .querySelector(".comment-btn")
