@@ -209,6 +209,18 @@
   background: var(--bg-subtle);
 }
 
+/* Secondary line inside a table cell (post author, report excerpt, who
+   closed a report). Uses a token so it follows the active theme. */
+.admin-table .cell-sub {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  white-space: normal;
+  max-width: 320px;
+  overflow-wrap: anywhere;
+}
+
 .badge-status {
   display: inline-block;
   padding: 0.25rem 0.65rem;
@@ -230,6 +242,13 @@
 .badge-status.flagged {
   background: #fee2e2;
   color: #b91c1c;
+}
+
+/* Report queue statuses. open -> pending, resolved -> approved, and this
+   neutral chip for dismissed so the three never read as the same state. */
+.badge-status.dismissed {
+  background: #e2e8f0;
+  color: #475569;
 }
 
 /* Action Buttons in Table */

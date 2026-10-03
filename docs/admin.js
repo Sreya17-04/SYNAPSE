@@ -577,6 +577,10 @@ function setupTabs() {
                 if (tab === "flagged") {
                     renderFlaggedTable();
                 }
+
+                if (tab === "reports") {
+                    showReportsTab();
+                }
         };
 
         button.addEventListener("click", activateTab);
@@ -622,6 +626,11 @@ function setupTabs() {
 let allAdminPosts = [];
 let allUsers = [];
 let allAnnouncements = [];
+let allReports = [];
+
+// Reports are fetched the first time their tab is opened rather than on every
+// page load, so a dashboard session with an empty queue costs no extra request.
+let reportsLoaded = false;
 
 // =====================================================
 // FETCH DASHBOARD STATS
@@ -1645,6 +1654,412 @@ function renderFlaggedTable() {
 }
 
 // =====================================================
+// REPORTS
+// =====================================================
+
+// Reason labels as the student sees them in the report dialog, so the raw
+// enum never reaches the screen.
+const REPORT_REASON_LABELS = {
+    spam: "Spam",
+    harassment: "Harassment",
+    misinformation: "False/misleading information",
+    inappropriate: "Inappropriate content",
+    "academic-integrity": "Academic integrity",
+    other: "Other"
+};
+
+// Same whitelist rule as statusBadge(): an unvalidated enum is never
+// interpolated straight into a class attribute.
+const REPORT_STATUSES = ["open", "resolved", "dismissed"];
+
+const REPORT_BADGE_CLASSES = {
+    open: "pending",
+    resolved: "approved",
+    dismissed: "dismissed"
+};
+
+function reportRef(id) {
+    return `#${String(id).slice(-6)}`;
+}
+
+function reportReasonLabel(reason) {
+    return REPORT_REASON_LABELS[reason] || reason || "Unknown";
+}
+
+function reportStatusBadge(status) {
+    const safe = REPORT_STATUSES.includes(status)
+        ? status
+        : "open";
+
+    return `<span class="badge-status ${REPORT_BADGE_CLASSES[safe]}">
+                        ${escapeHTML(safe.toUpperCase())}
+                    </span>`;
+}
+
+function formatReportDate(value) {
+    const date = new Date(value);
+
+    if (isNaN(date.getTime())) {
+        return "—";
+    }
+
+    return date.toLocaleString("en-IN", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit"
+    });
+}
+
+// Opening the tab: render what we already have, or fetch it the first time.
+function showReportsTab() {
+    if (reportsLoaded) {
+        renderReportsTable();
+        return;
+    }
+
+    fetchReports();
+}
+
+async function fetchReports() {
+
+    const tbody =
+        get("reports-tbody");
+
+    if (!tbody) {
+        return;
+    }
+
+    tbody.innerHTML = `
+        <tr>
+            <td colspan="7"
+                class="table-empty">
+                Loading reports...
+            </td>
+        </tr>
+    `;
+
+    try {
+
+        // Same probe pattern as fetchUsers(): a 403 means the account is no
+        // longer an admin, which fetchAllPages cannot detect on its own.
+        const response =
+            await adminFetch(
+                `${API}/api/admin/reports`
+            );
+
+        if (response.status === 403) {
+            handleAdminAuthFailure();
+            return;
+        }
+
+        if (!response.ok) {
+            throw new Error(
+                `Reports request failed: ${response.status}`
+            );
+        }
+
+        const data =
+            await fetchAllPages(
+                `${API}/api/admin/reports`,
+                "reports"
+            );
+
+        allReports = Array.isArray(data) ? data : [];
+        reportsLoaded = true;
+
+        renderReportsTable();
+
+    } catch (error) {
+
+        console.error(
+            "Reports error:",
+            error
+        );
+
+        allReports = [];
+        reportsLoaded = false;
+
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="7"
+                    class="table-empty-error">
+                    Failed to load reports.
+                </td>
+            </tr>
+        `;
+
+        showToast(
+            "Could not load reports.",
+            "error"
+        );
+    }
+}
+
+function renderReportsTable() {
+
+    const tbody =
+        get("reports-tbody");
+
+    if (!tbody) {
+        return;
+    }
+
+    if (allReports.length === 0) {
+
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="7"
+                    class="table-empty">
+                    No reports found.
+                </td>
+            </tr>
+        `;
+
+        return;
+    }
+
+    tbody.innerHTML =
+        allReports.map((report) => {
+
+            const status =
+                REPORT_STATUSES.includes(report.status)
+                    ? report.status
+                    : "open";
+
+            const isOpen = status === "open";
+
+            const snapshot =
+                report.postSnapshot || {};
+
+            const reporter =
+                report.reporter || {};
+
+            const resolution =
+                report.resolution || {};
+
+            const reasonLabel =
+                escapeHTML(
+                    reportReasonLabel(report.reason)
+                );
+
+            const details = report.details
+                ? `<span class="cell-sub">${escapeHTML(report.details)}</span>`
+                : "";
+
+            const postTitle = snapshot.title
+                ? escapeHTML(snapshot.title)
+                : "(post no longer available)";
+
+            const postAuthor = snapshot.author
+                ? `<span class="cell-sub">by ${escapeHTML(snapshot.author)}</span>`
+                : "";
+
+            const excerpt = snapshot.excerpt
+                ? `<span class="cell-sub">${escapeHTML(snapshot.excerpt)}</span>`
+                : "";
+
+            // Who closed it and when - useful context that is already in the
+            // document, so no extra request per row.
+            const resolutionLine = (!isOpen && resolution.resolvedAt)
+                ? `<span class="cell-sub">${escapeHTML(
+                    resolution.resolvedBy?.name || "Moderator"
+                )} · ${escapeHTML(formatReportDate(resolution.resolvedAt))}</span>`
+                : "";
+
+            return `
+                <tr>
+
+                    <td title="${escapeHTML(String(report._id))}">
+                        <strong>
+                            ${escapeHTML(reportRef(report._id))}
+                        </strong>
+                    </td>
+
+                    <td>
+                        ${reasonLabel}
+                        ${details}
+                    </td>
+
+                    <td>
+                        <strong>${postTitle}</strong>
+                        ${postAuthor}
+                        ${excerpt}
+                    </td>
+
+                    <td>
+                        ${escapeHTML(reporter.name || "—")}
+                    </td>
+
+                    <td>
+                        ${escapeHTML(formatReportDate(report.createdAt))}
+                    </td>
+
+                    <td>
+                        ${reportStatusBadge(status)}
+                        ${resolutionLine}
+                    </td>
+
+                    <td>
+                        ${isOpen
+                ? `
+                            <button
+                                class="btn-table-action btn-approve"
+                                data-report-id="${report._id}"
+                                data-report-status="resolved"
+                                type="button">
+                                Resolve
+                            </button>
+
+                            <button
+                                class="btn-table-action btn-view"
+                                data-report-id="${report._id}"
+                                data-report-status="dismissed"
+                                type="button">
+                                Dismiss
+                            </button>
+                        `
+                : "—"}
+                    </td>
+
+                </tr>
+            `;
+
+        }).join("");
+
+    attachReportActions(tbody);
+}
+
+function attachReportActions(container) {
+
+    container
+        .querySelectorAll("[data-report-id]")
+        .forEach((button) => {
+
+            button.addEventListener(
+                "click",
+                () => {
+
+                    resolveDismissReport(
+                        button.dataset.reportId,
+                        button.dataset.reportStatus
+                    );
+
+                }
+            );
+
+        });
+}
+
+async function resolveDismissReport(reportId, status) {
+
+    // Only the two terminal states can be sent; "open" is not a PATCH value.
+    if (status !== "resolved" && status !== "dismissed") {
+        return;
+    }
+
+    const report =
+        allReports.find(
+            item =>
+                String(item._id) === String(reportId)
+        );
+
+    const title =
+        report?.postSnapshot?.title || "this post";
+
+    const confirmed =
+        window.confirm(
+            status === "resolved"
+                ? `Resolve the report on "${title}"?\n\nIt will be marked as resolved.`
+                : `Dismiss the report on "${title}"?\n\nIt will be marked as dismissed.`
+        );
+
+    if (!confirmed) {
+        return;
+    }
+
+    try {
+
+        const response =
+            await adminFetch(
+                `${API}/api/admin/reports/${reportId}`,
+                {
+                    method: "PATCH",
+                    // Exact body shape the route validates: status is required,
+                    // action/note are optional and left unset.
+                    body: JSON.stringify({ status })
+                }
+            );
+
+        if (response.status === 403) {
+            handleAdminAuthFailure();
+            return;
+        }
+
+        // Already closed by another moderator or another tab.
+        if (response.status === 409) {
+            showToast(
+                await readError(
+                    response,
+                    "This report was already processed."
+                ),
+                "info"
+            );
+
+            await fetchReports();
+            return;
+        }
+
+        if (!response.ok) {
+            throw new Error(
+                await readError(
+                    response,
+                    "Failed to update report"
+                )
+            );
+        }
+
+        const data =
+            await response.json().catch(() => ({}));
+
+        // The route returns the updated document, so the row can flip to its
+        // new status without refetching the whole queue.
+        if (data.report) {
+            allReports =
+                allReports.map((item) =>
+                    String(item._id) === String(reportId)
+                        ? data.report
+                        : item
+                );
+        }
+
+        renderReportsTable();
+
+        // The dashboard's "Pending Reports" tile is served by
+        // /api/admin/stats, so refresh it alongside the queue.
+        await fetchStats();
+
+        showToast(
+            data.message || `Report ${status}.`,
+            "success"
+        );
+
+    } catch (error) {
+
+        console.error(
+            "Report update error:",
+            error
+        );
+
+        showToast(
+            error.message || "Failed to update report.",
+            "error"
+        );
+    }
+}
+
+// =====================================================
 // TABLE ACTIONS
 // =====================================================
 
@@ -2228,6 +2643,37 @@ function setupRefresh() {
 }
 
 // =====================================================
+// REPORTS REFRESH
+// =====================================================
+
+// Mirrors the dashboard's refresh button: re-walk the paginated queue from
+// the server instead of trusting whatever was loaded when the tab first opened.
+function setupReportsRefresh() {
+
+    const refreshButton =
+        get("reports-refresh-btn");
+
+    if (!refreshButton) {
+        return;
+    }
+
+    refreshButton.addEventListener(
+        "click",
+        async () => {
+
+            refreshButton.disabled = true;
+
+            try {
+                await fetchReports();
+            } finally {
+                refreshButton.disabled = false;
+            }
+
+        }
+    );
+}
+
+// =====================================================
 // INITIALIZE DASHBOARD
 // =====================================================
 
@@ -2256,6 +2702,8 @@ async function initAdminDashboard() {
     setupSearch();
 
     setupRefresh();
+
+    setupReportsRefresh();
 
     setupAnnouncementForm();
 

@@ -138,9 +138,12 @@ Public unless marked. Mutating routes need `Authorization: Bearer <token>`.
 | `GET` | `/api/admin/users` | admin |
 | `PATCH` | `/api/admin/users/:id/flag` | admin |
 | `DELETE` | `/api/admin/users/:id` | admin |
+| `GET` | `/api/admin/reports` | admin |
+| `PATCH` | `/api/admin/reports/:id` | admin |
 
 `GET /api/posts` accepts `?limit=` (1–100) and `?category=`. The admin list
-endpoints accept `?page=` and `?limit=` (≤200).
+endpoints accept `?page=` and `?limit=` (≤200). `GET /api/admin/reports` also
+accepts `?status=` (`open`, `resolved`, `dismissed` or `all`).
 
 ## Design notes
 

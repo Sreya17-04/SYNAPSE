@@ -72,6 +72,10 @@
                 role="tab" aria-selected="false" aria-controls="panel-flagged" tabindex="-1">
                 <span>⚠️</span> Flagged (<span id="flagged-count">0</span>)
             </button>
+            <button class="admin-nav-item" id="tab-reports" data-tab="reports" type="button"
+                role="tab" aria-selected="false" aria-controls="panel-reports" tabindex="-1">
+                <span>🚩</span> Reports
+            </button>
         </aside>
 
         <!-- MAIN CONTENT -->
@@ -244,6 +248,35 @@
                                 </tr>
                             </thead>
                             <tbody id="flagged-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== REPORTS TAB ===== -->
+            <div id="panel-reports" class="admin-panel panel-hidden" role="tabpanel" aria-labelledby="tab-reports" tabindex="0">
+                <div class="admin-header-title">
+                    <h1>Reports</h1>
+                    <p>Posts reported by students, awaiting moderation review.</p>
+                </div>
+                <div class="table-card">
+                    <div class="table-card-header">
+                        <h2>All Reports</h2>
+                        <button class="btn-create-post-banner" id="reports-refresh-btn" type="button">🔄 Refresh</button>
+                    </div>
+                    <div class="table-scroll">
+                        <table class="admin-table">
+                            <thead><tr>
+                                    <th scope="col">Ref</th>
+                                    <th scope="col">Reason</th>
+                                    <th scope="col">Reported Post</th>
+                                    <th scope="col">Reporter</th>
+                                    <th scope="col">Filed</th>
+                                    <th scope="col">Status</th>
+                                    <th scope="col">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="reports-tbody"></tbody>
                         </table>
                     </div>
                 </div>
