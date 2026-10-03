@@ -14,7 +14,7 @@
 // =====================================================
 
 // >>> SET THIS once your backend is deployed, e.g. "https://synapse-api.onrender.com"
-const SYNAPSE_DEPLOYED_API_URL = "";
+const SYNAPSE_DEPLOYED_API_URL = "https://synapse-api-tc6p.onrender.com";
 
 const SYNAPSE_API_URL = (() => {
     const trim = (url) => (url || "").trim().replace(/\/+$/, "");
