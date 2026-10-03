@@ -9,6 +9,14 @@ const { validateObjectId } = require("../middleware/validateObjectId");
 
 const router = express.Router();
 
+// One identifier per account: the admin's email, a seeded student's
+// universityRegNo. Used for audit labels, cascade deletion and log entries.
+const identityOf = User.identityOf;
+
+// Display value for a user: never the roll number (it is also the initial
+// password), always the original casing.
+const displayId = (user) => user.email || user.universityRegNo || "unknown";
+
 // All routes in this file require: protect + adminOnly
 // Students hitting any route here get 403 Forbidden
 router.use(protect, adminOnly);
@@ -124,7 +132,7 @@ router.post("/announcements", async (req, res) => {
             message,
             createdBy: {
                 name: req.user.name,
-                email: req.user.email
+                email: identityOf(req.user)
             }
         });
 
@@ -291,14 +299,20 @@ router.patch("/users/:id/flag", async (req, res) => {
         await AuditLog.record({
             action: user.isFlagged ? "user.flagged" : "user.unflagged",
             actor: req.user,
-            target: { type: "user", id: user._id, label: user.email },
+            target: { type: "user", id: user._id, label: displayId(user) },
             details: { name: user.name, isFlagged: user.isFlagged },
             req
         });
 
         res.status(200).json({
             message: `User ${user.isFlagged ? "flagged" : "unflagged"} successfully.`,
-            user: { id: user._id, name: user.name, email: user.email, isFlagged: user.isFlagged }
+            user: {
+                id: user._id,
+                name: user.name,
+                email: user.email,
+                universityRegNo: user.universityRegNo,
+                isFlagged: user.isFlagged
+            }
         });
     } catch (error) {
         console.error("Admin flag user error:", error.message);
@@ -334,7 +348,9 @@ router.delete("/users/:id", async (req, res) => {
             });
         }
 
-        const email = (user.email || "").trim().toLowerCase();
+        // Email for the admin, universityRegNo for a seeded student. Lowercased
+        // because that is how identityOf() stores it on authored content.
+        const identity = identityOf(user);
 
         // The account goes first so a later failure can never leave a live
         // account whose content was already destroyed.
@@ -344,11 +360,11 @@ router.delete("/users/:id", async (req, res) => {
         let removedComments = 0;
         let removedLikes = 0;
 
-        // Everything below keys off the author email, so an account without
+        // Everything below keys off the author identifier, so an account without
         // one would match the empty-string default on other people's content.
-        if (email) {
+        if (identity) {
             // Authored posts, and the savedPosts entries pointing at them.
-            const authored = await Post.find({ authorEmail: email }).select("_id");
+            const authored = await Post.find({ authorEmail: identity }).select("_id");
             const postIds = authored.map((post) => post._id);
             deletedPosts = postIds.length;
 
@@ -363,22 +379,22 @@ router.delete("/users/:id", async (req, res) => {
 
             // Comments the user left on other people's posts.
             const commentResult = await Post.updateMany(
-                { "comments.authorEmail": email },
-                { $pull: { comments: { authorEmail: email } } }
+                { "comments.authorEmail": identity },
+                { $pull: { comments: { authorEmail: identity } } }
             );
             removedComments = commentResult.modifiedCount || 0;
 
             // Likes given by the user. updateMany skips the pre-save hook, so
             // the denormalised `likes` counter is recomputed from `likedBy`.
-            const liked = await Post.find({ likedBy: email }).select("_id");
+            const liked = await Post.find({ likedBy: identity }).select("_id");
             removedLikes = liked.length;
 
             if (liked.length > 0) {
                 const likedIds = liked.map((post) => post._id);
 
                 await Post.updateMany(
-                    { likedBy: email },
-                    { $pull: { likedBy: email } }
+                    { likedBy: identity },
+                    { $pull: { likedBy: identity } }
                 );
 
                 const refreshed = await Post.find({ _id: { $in: likedIds } })
@@ -398,7 +414,7 @@ router.delete("/users/:id", async (req, res) => {
         await AuditLog.record({
             action: "user.deleted",
             actor: req.user,
-            target: { type: "user", id: user._id, label: user.email },
+            target: { type: "user", id: user._id, label: displayId(user) },
             details: {
                 name: user.name,
                 posts: deletedPosts,
@@ -409,7 +425,7 @@ router.delete("/users/:id", async (req, res) => {
         });
 
         res.status(200).json({
-            message: `Account ${user.email} deleted successfully.`,
+            message: `Account ${displayId(user)} deleted successfully.`,
             deletedPosts
         });
     } catch (error) {
@@ -488,7 +504,7 @@ router.patch("/reports/:id", async (req, res) => {
         report.resolution = {
             action: cleanAction,
             note: cleanNote,
-            resolvedBy: { name: req.user.name, email: req.user.email },
+            resolvedBy: { name: req.user.name, email: identityOf(req.user) },
             resolvedAt: new Date()
         };
 

@@ -66,6 +66,6 @@ const SYNAPSE_API_URL = (() => {
 })();
 
 // `const` at the top level creates a lexical global binding, NOT a property of
-// window - so auth-common.js / login.js / register.js / admin-login.js, which
+// window - so auth-common.js / login.js / admin-login.js, which
 // read window.SYNAPSE_API_URL, would get undefined. Publish it explicitly.
 window.SYNAPSE_API_URL = SYNAPSE_API_URL;

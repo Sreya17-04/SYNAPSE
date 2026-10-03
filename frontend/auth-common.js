@@ -1,5 +1,5 @@
 /**
- * Helpers shared by the student and admin login/register pages.
+ * Helpers shared by the student and admin login pages.
  *
  * Loaded as a classic script so the pages keep working without a bundler;
  * exposes a single global rather than repeating this logic per page.

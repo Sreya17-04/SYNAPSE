@@ -1,8 +1,8 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 
-// Kept in one place so the schema, the register route and the seeder
-// can never disagree about how long a password must be.
+// Kept in one place so the schema and the seeder can never disagree about
+// how long a password must be.
 const MIN_PASSWORD_LENGTH = 8;
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -16,13 +16,39 @@ const userSchema = new mongoose.Schema(
             maxlength: [80, "Name must be 80 characters or fewer"],
         },
 
+        // Optional. Student accounts are pre-provisioned from the official
+        // list and never carry an email; the field stays for the admin
+        // account and for any account created before that change. Student
+        // login never reads it.
+        //
+        // sparse is required: without it the unique index would treat every
+        // email-less student as the same null key and reject the second one.
         email: {
             type: String,
-            required: [true, "Email is required"],
             unique: true,
+            sparse: true,
             lowercase: true,
             trim: true,
             match: [EMAIL_PATTERN, "Email must be a valid address"],
+        },
+
+        // Official class list identifier. This - not email - is what a
+        // student types as their username, and it is unique across accounts.
+        universityRegNo: {
+            type: String,
+            unique: true,
+            sparse: true,
+            uppercase: true,
+            trim: true,
+        },
+
+        // Also the student's initial password, so it is excluded from every
+        // query by default for the same reason `password` is.
+        rollNo: {
+            type: String,
+            uppercase: true,
+            trim: true,
+            select: false,
         },
 
         // Never returned unless explicitly requested with .select("+password")
@@ -74,6 +100,40 @@ const userSchema = new mongoose.Schema(
 userSchema.index({ role: 1, createdAt: -1 });
 userSchema.index({ isFlagged: 1 });
 
+// Every account must be reachable by exactly one identifier: the admin signs
+// in with its email, a seeded student with universityRegNo. Enforced at
+// creation only, because a later save may load a projection (`select
+// ("savedPosts")`) where neither field is present - the value itself is
+// immutable once the account exists.
+userSchema.pre("validate", function () {
+    if (!this.isNew) {
+        return;
+    }
+
+    if (!this.email && !this.universityRegNo) {
+        this.invalidate(
+            "universityRegNo",
+            "An account needs either an email or a university registration number."
+        );
+    }
+});
+
+/**
+ * The one string an account is keyed on across the app: authorEmail on posts
+ * and comments, likedBy entries, reporter.email on reports, the admin
+ * cascade-delete queries and the audit log.
+ *
+ * Students resolve to their registration number, accounts that still carry an
+ * email resolve to it. Normalised to lowercase because Post.likedBy and the
+ * deletion queries store lowercased values, and every comparison in the code
+ * base is case-insensitive on top of that.
+ */
+const identityOf = (user) => {
+    const raw = (user && (user.email || user.universityRegNo)) || "";
+
+    return typeof raw === "string" ? raw.trim().toLowerCase() : "";
+};
+
 // Hash password before saving
 userSchema.pre("save", async function () {
     if (!this.isModified("password")) {
@@ -92,3 +152,4 @@ userSchema.methods.matchPassword = async function (enteredPassword) {
 module.exports = mongoose.model("User", userSchema);
 module.exports.MIN_PASSWORD_LENGTH = MIN_PASSWORD_LENGTH;
 module.exports.EMAIL_PATTERN = EMAIL_PATTERN;
+module.exports.identityOf = identityOf;

@@ -1298,6 +1298,10 @@ function renderUsersTable(searchTerm = "") {
 
                     (user.email || "")
                         .toLowerCase()
+                        .includes(query) ||
+
+                    (user.universityRegNo || "")
+                        .toLowerCase()
                         .includes(query)
                 );
 
@@ -1348,7 +1352,7 @@ function renderUsersTable(searchTerm = "") {
                     </td>
 
                     <td>
-                        ${escapeHTML(user.email)}
+                        ${escapeHTML(user.email || user.universityRegNo || "—")}
                     </td>
 
                     <td>

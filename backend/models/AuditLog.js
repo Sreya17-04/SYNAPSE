@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { identityOf } = require("./User");
 
 /**
  * Append-only record of every moderation action.
@@ -84,7 +85,8 @@ auditLogSchema.statics.record = async function ({
             action,
             actor: {
                 name: actor?.name || "system",
-                email: actor?.email || ""
+                // Email for admins, universityRegNo for seeded students.
+                email: identityOf(actor)
             },
             target: {
                 type: target.type || "system",

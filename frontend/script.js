@@ -338,7 +338,10 @@ if (currentUser) {
     }
 
     if (emailElement) {
-        emailElement.textContent = currentUser.email || "";
+        // Admins and legacy accounts show their email; pre-provisioned
+        // students have none, so show their registration number instead.
+        emailElement.textContent =
+            currentUser.email || currentUser.universityRegNo || "";
     }
 
     if (initialsElement) {

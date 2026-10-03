@@ -129,7 +129,7 @@ app.use(
 app.use(express.json({ limit: "1mb" }));
 
 // Broad backstop so a single client cannot flood any endpoint. The auth
-// routes layer a stricter, email-keyed limiter on top of this.
+// routes layer a stricter, login-identifier-keyed limiter on top of this.
 app.use(
     "/api",
     rateLimit({
@@ -199,7 +199,7 @@ app.use((error, req, res, next) => {
         return res.status(400).json({ message: "Invalid resource identifier." });
     }
 
-    // Unique index violation (e.g. duplicate email on register)
+    // Unique index violation (e.g. duplicate universityRegNo)
     if (error.code === 11000) {
         return res.status(400).json({ message: "That record already exists." });
     }

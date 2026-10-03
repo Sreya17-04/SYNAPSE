@@ -1,11 +1,17 @@
 /**
  * SYNAPSE - Database Seeder
  * Run with: npm run seed
- * Creates the default admin account, a demo student and sample content.
+ * Creates the default admin account, the 76 official CSE 2K24B students from
+ * studentSeedData.js and sample content.
+ *
+ * Safe to run repeatedly: nothing already in the database is touched, so no
+ * account, post, comment, announcement, report or audit entry is ever
+ * duplicated or deleted.
  */
 
 const mongoose = require("mongoose");
 const crypto = require("crypto");
+const bcrypt = require("bcryptjs");
 const dotenv = require("dotenv");
 
 dotenv.config();
@@ -14,8 +20,22 @@ const connectDB = require("./config/db");
 const User = require("./models/User");
 const Post = require("./models/Post");
 const Announcement = require("./models/Announcement");
+const students = require("./studentSeedData");
 
 const MIN_PASSWORD_LENGTH = User.MIN_PASSWORD_LENGTH;
+
+// Matches the rounds used by the bcrypt pre-save hook in models/User.js.
+const SALT_ROUNDS = 10;
+
+const EXPECTED_STUDENT_COUNT = 76;
+
+const REQUIRED_STUDENT_FIELDS = [
+    "universityRegNo",
+    "rollNo",
+    "name",
+    "initialPassword",
+    "role"
+];
 
 const ADMIN_PROFILE = {
     name: "SYNAPSE Admin",
@@ -24,11 +44,11 @@ const ADMIN_PROFILE = {
     passwordEnvKey: "SEED_ADMIN_PASSWORD"
 };
 
-const DEMO_STUDENT_PROFILE = {
-    name: "Demo Student",
-    email: "student@synapse.edu",
-    role: "student",
-    passwordEnvKey: "SEED_STUDENT_PASSWORD"
+// Sample posts keep the authorship they were written with. The account itself
+// is no longer created: students come exclusively from studentSeedData.js.
+const SAMPLE_POST_AUTHOR = {
+    author: "Demo Student",
+    authorEmail: "student@synapse.edu"
 };
 
 const generatePassword = () => crypto.randomBytes(12).toString("base64url");
@@ -126,6 +146,139 @@ const printExistingNotice = (profile) => {
     );
 };
 
+/**
+ * Fail loudly rather than import a broken class list: the login flow depends
+ * on every record carrying the five official fields, on registration numbers
+ * being unique (they are the login username) and on roll numbers being unique.
+ */
+const validateStudentRecords = (records) => {
+    if (records.length !== EXPECTED_STUDENT_COUNT) {
+        throw new Error(
+            `studentSeedData.js must contain exactly ${EXPECTED_STUDENT_COUNT} students, found ${records.length}.`
+        );
+    }
+
+    const seenRegNos = new Set();
+    const seenRollNos = new Set();
+    let duplicateRegNos = 0;
+    let passwordMismatches = 0;
+
+    records.forEach((record, index) => {
+        const missing = REQUIRED_STUDENT_FIELDS.filter(
+            (field) =>
+                typeof record[field] !== "string" || !record[field].trim()
+        );
+
+        if (missing.length > 0) {
+            throw new Error(
+                `studentSeedData.js record ${index + 1} is missing: ${missing.join(", ")}`
+            );
+        }
+
+        const regNo = record.universityRegNo.trim().toUpperCase();
+        const rollNo = record.rollNo.trim().toUpperCase();
+
+        if (seenRegNos.has(regNo)) {
+            duplicateRegNos += 1;
+        }
+        seenRegNos.add(regNo);
+
+        if (seenRollNos.has(rollNo)) {
+            throw new Error(
+                `studentSeedData.js has a duplicate roll number: ${record.rollNo}`
+            );
+        }
+        seenRollNos.add(rollNo);
+
+        if (record.role !== "student") {
+            throw new Error(
+                `studentSeedData.js record ${index + 1} has role "${record.role}"; every seeded account must be a student.`
+            );
+        }
+
+        // Students sign in with their roll number, so the file must ship the
+        // roll number as the initial password.
+        if (record.initialPassword.trim() !== record.rollNo.trim()) {
+            passwordMismatches += 1;
+        }
+    });
+
+    if (duplicateRegNos > 0) {
+        throw new Error(
+            `studentSeedData.js has ${duplicateRegNos} duplicate university registration number(s).`
+        );
+    }
+
+    if (passwordMismatches > 0) {
+        console.warn(
+            `   WARNING: ${passwordMismatches} record(s) have initialPassword different from rollNo.`
+        );
+    }
+
+    return { duplicateRegNos, uniqueRegNos: seenRegNos.size };
+};
+
+/**
+ * Import the official student list. Idempotent: an existing registration
+ * number is never re-created, so running the seeder twice (or ten times)
+ * leaves exactly one account per student and never re-hashes a password.
+ */
+const seedStudents = async () => {
+    const records = students;
+
+    console.log(`${records.length} student records found`);
+
+    const { duplicateRegNos } = validateStudentRecords(records);
+
+    const regNos = records.map((record) =>
+        record.universityRegNo.trim().toUpperCase()
+    );
+
+    const existing = await User.find({
+        universityRegNo: { $in: regNos }
+    }).select("universityRegNo");
+
+    const existingRegNos = new Set(
+        existing.map((user) => user.universityRegNo)
+    );
+
+    const missing = records.filter(
+        (record) => !existingRegNos.has(record.universityRegNo.trim().toUpperCase())
+    );
+
+    if (missing.length > 0) {
+        const documents = await Promise.all(
+            missing.map(async (record) => ({
+                name: record.name.trim(),
+                universityRegNo: record.universityRegNo.trim().toUpperCase(),
+                rollNo: record.rollNo.trim().toUpperCase(),
+                // Hashed here rather than through the pre-save hook, because
+                // insertMany (bulk import) does not run save middleware. Only
+                // the hash reaches MongoDB - never the roll number itself.
+                password: await bcrypt.hash(record.initialPassword, SALT_ROUNDS),
+                role: "student"
+            }))
+        );
+
+        // Bulk insert skips save hooks on purpose: it must not re-hash a hash.
+        await User.insertMany(documents);
+
+        const sampleHash = documents[0].password;
+
+        if (!/^\$2[aby]\$/.test(sampleHash)) {
+            throw new Error("Student passwords were not bcrypt-hashed.");
+        }
+
+        if (!(await bcrypt.compare(missing[0].initialPassword, sampleHash))) {
+            throw new Error("Student password hash does not verify.");
+        }
+    }
+
+    console.log(`${missing.length} students created`);
+    console.log(`${records.length - missing.length} students already existed`);
+    console.log(`${duplicateRegNos} duplicate university registration numbers`);
+};
+
 const seed = async () => {
     try {
         // Reuse the server's connection helper so seeding gets the same
@@ -134,7 +287,8 @@ const seed = async () => {
 
         console.log("MongoDB connected for seeding...\n");
 
-        // The `unique: true` on User.email is only enforced once the index exists
+        // The unique indexes (User.email, User.universityRegNo) are only
+        // enforced once they exist
         await Promise.all(
             [User, Post, Announcement].map((model) => model.syncIndexes())
         );
@@ -182,34 +336,9 @@ const seed = async () => {
             console.log(`   ID      : ${admin._id}`);
         }
 
-        // ---- Demo student ----
-        const existingStudent = await User.findOne({
-            email: DEMO_STUDENT_PROFILE.email
-        });
-
-        if (!existingStudent) {
-            const { value, generated } = resolvePassword(
-                DEMO_STUDENT_PROFILE.passwordEnvKey
-            );
-
-            await User.create({
-                name: DEMO_STUDENT_PROFILE.name,
-                email: DEMO_STUDENT_PROFILE.email,
-                password: value,
-                role: DEMO_STUDENT_PROFILE.role
-            });
-
-            console.log("\nDemo student account created:");
-            printNewCredentials({
-                email: DEMO_STUDENT_PROFILE.email,
-                password: value,
-                role: DEMO_STUDENT_PROFILE.role,
-                generated
-            });
-        } else {
-            console.log("\nDemo student account already exists.");
-            printExistingNotice(DEMO_STUDENT_PROFILE);
-        }
+        // ---- Official student list (76 accounts) ----
+        await seedStudents();
+        console.log("");
 
         // ---- Announcements ----
         const announcementCount = await Announcement.countDocuments();
@@ -233,12 +362,7 @@ const seed = async () => {
         const postCount = await Post.countDocuments();
 
         if (postCount === 0) {
-            const author = {
-                author: DEMO_STUDENT_PROFILE.name,
-                authorEmail: DEMO_STUDENT_PROFILE.email
-            };
-
-            await Post.insertMany(SAMPLE_POSTS.map((post) => ({ ...post, ...author })));
+            await Post.insertMany(SAMPLE_POSTS.map((post) => ({ ...post, ...SAMPLE_POST_AUTHOR })));
             console.log(`Sample posts created (${SAMPLE_POSTS.length}).`);
         } else {
             console.log("\nPosts already exist - skipped.");

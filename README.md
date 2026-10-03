@@ -13,25 +13,30 @@ opportunities, comment and like, and admins moderate.
 cd backend
 npm install
 cp .env.example .env      # then fill in MONGO_URI and JWT_SECRET
-npm run seed              # optional: creates the admin + demo accounts
+npm run seed              # imports the 76 official students + the admin
 npm run dev               # nodemon; use `npm start` for plain node
 ```
 
 Open <http://localhost:5000/login.html>.
 
-### Seed accounts
+### Accounts
 
-`npm run seed` creates two accounts. Passwords come from `SEED_ADMIN_PASSWORD`
-and `SEED_STUDENT_PASSWORD`; if unset, a random password is generated and
-printed once, so no usable default is ever committed.
+`npm run seed` imports the official CSE 2K24B list from
+`backend/studentSeedData.js`: exactly 76 student accounts, keyed by
+`universityRegNo`. Re-running the seed never duplicates or overwrites
+anything. It also creates the admin account, whose password comes from
+`SEED_ADMIN_PASSWORD`; if unset, a random password is generated and printed
+once, so no usable default is ever committed.
 
-| Role | Email | Page |
+| Role | Credentials | Page |
 | --- | --- | --- |
-| Admin | `admin@synapse.edu` | `/admin-login.html` |
-| Student | `student@synapse.edu` | `/login.html` |
+| Admin | `admin@synapse.edu` + `SEED_ADMIN_PASSWORD` | `/admin-login.html` |
+| Student | University Registration Number + Roll Number | `/login.html` |
 
-Registration always creates a `student`. There is no self-service path to
-`admin`, and admin accounts cannot be flagged.
+A student signs in with e.g. `TKM24CS027` / `B24CSB01`. Roll numbers are
+stored only as bcrypt hashes. There is no registration endpoint and no
+sign-up page — accounts exist only because the seed file says so — and there
+is no self-service path to `admin`; admin accounts cannot be flagged.
 
 ### Database
 
@@ -105,7 +110,6 @@ without any changes.
 | `CORS_ORIGINS` | no | Comma-separated. Also feeds the CSP `connect-src` |
 | `JWT_EXPIRES_IN` | no | Default `12h` |
 | `SEED_ADMIN_PASSWORD` | no | ≥8 chars, applies only at account creation |
-| `SEED_STUDENT_PASSWORD` | no | ≥8 chars, applies only at account creation |
 
 ## API
 
@@ -114,7 +118,6 @@ Public unless marked. Mutating routes need `Authorization: Bearer <token>`.
 | Method | Path | Auth |
 | --- | --- | --- |
 | `GET` | `/api/health` | — |
-| `POST` | `/api/auth/register` | — (rate limited) |
 | `POST` | `/api/auth/login` | — (rate limited) |
 | `POST` | `/api/auth/logout` | token |
 | `GET` | `/api/auth/me` | token |
@@ -140,6 +143,11 @@ Public unless marked. Mutating routes need `Authorization: Bearer <token>`.
 | `DELETE` | `/api/admin/users/:id` | admin |
 | `GET` | `/api/admin/reports` | admin |
 | `PATCH` | `/api/admin/reports/:id` | admin |
+
+`POST /api/auth/login` takes `{ username, password }` for students
+(`username` = university registration number, `password` = roll number) or
+`{ email, password }` for the admin login page. There is no `/api/auth/*`
+route for creating accounts.
 
 `GET /api/posts` accepts `?limit=` (1–100) and `?category=`. The admin list
 endpoints accept `?page=` and `?limit=` (≤200). `GET /api/admin/reports` also

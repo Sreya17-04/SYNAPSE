@@ -23,6 +23,11 @@ const MIN_FEED_LIMIT = 1;
 
 const cleanText = (value) => (typeof value === "string" ? value.trim() : "");
 
+// One identifier per account: the admin keeps its email, a pre-provisioned
+// student uses its universityRegNo. authorEmail, likedBy, comments.authorEmail
+// and reporter.email all hold this value.
+const identityOf = User.identityOf;
+
 // Reporting is deliberately throttled harder than the global API limiter:
 // a student should be able to file several reports, but not use the endpoint
 // as a spam channel against a post they dislike.
@@ -34,26 +39,31 @@ const reportLimiter = rateLimit({
     message: { message: "You have filed too many reports. Try again later." }
 });
 
-// Emails are stored lowercased by the schema, but compare defensively so a
-// legacy mixed-case document still matches its author.
+// Identifiers are stored lowercased by the schema/seeder, but compare
+// defensively so a legacy mixed-case document still matches its author. An
+// empty string is never a match: content with no author must not become
+// editable by an account that also has no identifier.
 const sameUser = (a, b) =>
     typeof a === "string" &&
     typeof b === "string" &&
+    a.trim().length > 0 &&
+    b.trim().length > 0 &&
     a.trim().toLowerCase() === b.trim().toLowerCase();
 
 /**
- * The public feed must never leak member email addresses. Ownership is
- * exposed as a boolean instead, computed only when the caller supplied a
- * valid token, so logged-in students still see their own delete/edit actions.
+ * The public feed must never leak member identifiers (emails or registration
+ * numbers). Ownership is exposed as a boolean instead, computed only when the
+ * caller supplied a valid token, so logged-in students still see their own
+ * delete/edit actions.
  */
-const toPublicPost = (post, viewerEmail) => {
+const toPublicPost = (post, viewerIdentity) => {
     const doc = post.toObject ? post.toObject() : { ...post };
 
     delete doc.authorEmail;
     delete doc.__v;
 
     doc.isOwner = Boolean(
-        viewerEmail && sameUser(post.authorEmail, viewerEmail)
+        viewerIdentity && sameUser(post.authorEmail, viewerIdentity)
     );
 
     if (Array.isArray(doc.comments)) {
@@ -62,7 +72,7 @@ const toPublicPost = (post, viewerEmail) => {
             return {
                 ...rest,
                 isOwner: Boolean(
-                    viewerEmail && sameUser(authorEmail, viewerEmail)
+                    viewerIdentity && sameUser(authorEmail, viewerIdentity)
                 )
             };
         });
@@ -104,13 +114,13 @@ router.post("/", protect, async (req, res) => {
         const newPost = new Post({
             title,
             author: req.user.name,
-            authorEmail: req.user.email,
+            authorEmail: identityOf(req.user),
             category,
             content
         });
 
         const savedPost = await newPost.save();
-        res.status(201).json(toPublicPost(savedPost, req.user.email));
+        res.status(201).json(toPublicPost(savedPost, identityOf(req.user)));
 
     } catch (error) {
         console.error("Create post error:", error);
@@ -148,9 +158,9 @@ router.get("/", optionalAuth, async (req, res) => {
             .sort({ createdAt: -1 })
             .limit(limit);
 
-        const viewerEmail = req.user ? req.user.email : null;
+        const viewerIdentity = req.user ? identityOf(req.user) : null;
 
-        res.status(200).json(posts.map((post) => toPublicPost(post, viewerEmail)));
+        res.status(200).json(posts.map((post) => toPublicPost(post, viewerIdentity)));
     } catch (error) {
         console.error("Fetch posts error:", error);
         res.status(500).json({ message: "Failed to fetch posts" });
@@ -169,18 +179,18 @@ router.patch("/:id/like", protect, async (req, res) => {
             return res.status(404).json({ message: "Post not found." });
         }
 
-        const userEmail = req.user.email;
+        const userIdentity = identityOf(req.user);
         const alreadyLiked = post.likedBy.some(
-            (email) => email.toLowerCase() === userEmail.toLowerCase()
+            (email) => email.toLowerCase() === userIdentity.toLowerCase()
         );
 
         if (alreadyLiked) {
             // Unlike - case-insensitive, so legacy mixed-case entries are cleaned up too
             post.likedBy = post.likedBy.filter(
-                (email) => email.toLowerCase() !== userEmail.toLowerCase()
+                (email) => email.toLowerCase() !== userIdentity.toLowerCase()
             );
         } else {
-            post.likedBy.push(userEmail);
+            post.likedBy.push(userIdentity);
         }
 
         // Derive the counter from the source of truth so it can never drift
@@ -223,7 +233,7 @@ router.post("/:id/comment", protect, async (req, res) => {
 
         post.comments.push({
             author: req.user.name,
-            authorEmail: req.user.email,
+            authorEmail: identityOf(req.user),
             text
         });
 
@@ -265,7 +275,7 @@ router.put("/:id", protect, async (req, res) => {
 
         // Only owner or admin can update
         if (
-            !sameUser(post.authorEmail, req.user.email) &&
+            !sameUser(post.authorEmail, identityOf(req.user)) &&
             req.user.role !== "admin"
         ) {
             return res.status(403).json({
@@ -331,7 +341,7 @@ router.put("/:id", protect, async (req, res) => {
             req
         });
 
-        res.status(200).json(toPublicPost(updatedPost, req.user.email));
+        res.status(200).json(toPublicPost(updatedPost, identityOf(req.user)));
 
     } catch (error) {
         console.error("Update post error:", error);
@@ -353,7 +363,7 @@ router.delete("/:id", protect, async (req, res) => {
 
         // Only owner or admin can delete
         if (
-            !sameUser(post.authorEmail, req.user.email) &&
+            !sameUser(post.authorEmail, identityOf(req.user)) &&
             req.user.role !== "admin"
         ) {
             return res.status(403).json({
@@ -405,7 +415,7 @@ router.get("/saved", protect, async (req, res) => {
             await user.save();
         }
 
-        res.status(200).json(posts.map((post) => toPublicPost(post, req.user.email)));
+        res.status(200).json(posts.map((post) => toPublicPost(post, identityOf(req.user))));
 
     } catch (error) {
         console.error("Fetch saved posts error:", error);
@@ -486,7 +496,7 @@ router.post("/:id/report", protect, reportLimiter, async (req, res) => {
         // A student cannot flood the queue by re-reporting the same post.
         const alreadyOpen = await Report.exists({
             post: post._id,
-            "reporter.email": req.user.email,
+            "reporter.email": identityOf(req.user),
             status: "open"
         });
 
@@ -503,7 +513,7 @@ router.post("/:id/report", protect, reportLimiter, async (req, res) => {
                 author: post.author,
                 excerpt: post.content.slice(0, 300)
             },
-            reporter: { name: req.user.name, email: req.user.email },
+            reporter: { name: req.user.name, email: identityOf(req.user) },
             reason,
             details
         });
@@ -545,7 +555,7 @@ router.patch("/:id/comments/:commentId", protect, async (req, res) => {
             return res.status(404).json({ message: "Comment not found." });
         }
 
-        const isAuthor = sameUser(comment.authorEmail, req.user.email);
+        const isAuthor = sameUser(comment.authorEmail, identityOf(req.user));
 
         if (!isAuthor && req.user.role !== "admin") {
             return res.status(403).json({
@@ -610,7 +620,7 @@ router.delete("/:id/comments/:commentId", protect, async (req, res) => {
             return res.status(404).json({ message: "Comment not found." });
         }
 
-        const isAuthor = sameUser(comment.authorEmail, req.user.email);
+        const isAuthor = sameUser(comment.authorEmail, identityOf(req.user));
 
         if (!isAuthor && req.user.role !== "admin") {
             return res.status(403).json({
