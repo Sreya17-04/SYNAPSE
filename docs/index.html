@@ -263,6 +263,56 @@
         </div>
     </div>
 
+    <!-- ================= REPORT POST MODAL ================= -->
+    <div class="modal-overlay" id="report-modal" role="dialog" aria-modal="true" aria-labelledby="report-modal-title">
+        <div class="modal-card report-card">
+            <div class="modal-header">
+                <h3 id="report-modal-title">Report Post</h3>
+                <button id="close-report-modal" class="modal-close-btn" type="button"
+                    aria-label="Close report dialog">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p class="report-post-title"><strong>Post:</strong> <span id="report-post-title"></span></p>
+
+                <form id="report-form" novalidate>
+                    <fieldset class="report-reasons">
+                        <legend>Why are you reporting this post?</legend>
+
+                        <label class="report-option">
+                            <input type="radio" name="report-reason" value="spam">
+                            <span>Spam</span>
+                        </label>
+
+                        <label class="report-option">
+                            <input type="radio" name="report-reason" value="harassment">
+                            <span>Harassment</span>
+                        </label>
+
+                        <label class="report-option">
+                            <input type="radio" name="report-reason" value="inappropriate">
+                            <span>Inappropriate content</span>
+                        </label>
+
+                        <label class="report-option">
+                            <input type="radio" name="report-reason" value="misinformation">
+                            <span>False/misleading information</span>
+                        </label>
+
+                        <label class="report-option">
+                            <input type="radio" name="report-reason" value="other">
+                            <span>Other</span>
+                        </label>
+                    </fieldset>
+
+                    <div class="form-actions">
+                        <button type="button" id="cancel-report" class="btn-cancel">Cancel</button>
+                        <button type="submit" class="btn-publish" id="submit-report-btn">Submit Report</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <!-- TOAST CONTAINER -->
     <div id="toast-container" aria-live="polite"></div>
 

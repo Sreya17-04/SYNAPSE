@@ -806,6 +806,8 @@ body.dark-mode .navbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  row-gap: 0.6rem;
   padding-top: 0.85rem;
   border-top: 1px solid var(--border-subtle);
 }
@@ -813,6 +815,7 @@ body.dark-mode .navbar {
 .post-actions-group {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 0.5rem;
 }
 
@@ -847,6 +850,14 @@ body.dark-mode .action-btn.liked {
 .action-btn.saved {
   background: var(--accent-light);
   color: var(--accent-primary);
+}
+
+/* Reported state: read-only, so the button cannot be pressed again. */
+.action-btn.report-btn.reported,
+.action-btn.report-btn.reported:hover {
+  background: var(--bg-subtle);
+  color: var(--text-muted);
+  cursor: default;
 }
 
 /* Inline Comments Drawer */
@@ -1170,6 +1181,70 @@ body.dark-mode .action-btn.liked {
 
 .btn-publish:hover {
   background: var(--accent-hover);
+}
+
+/* =====================================================
+   REPORT POST MODAL
+   ===================================================== */
+.report-card {
+  max-width: 460px;
+}
+
+.report-post-title {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin-bottom: 1.1rem;
+  overflow-wrap: anywhere;
+}
+
+.report-reasons {
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+
+.report-reasons legend {
+  padding: 0;
+  margin-bottom: 0.6rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.report-option {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.6rem 0.85rem;
+  margin-bottom: 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-subtle);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.report-option:hover {
+  background: var(--bg-hover);
+  border-color: var(--accent-border);
+}
+
+.report-option.selected {
+  border-color: var(--accent-primary);
+  background: var(--accent-light);
+  color: var(--accent-primary);
+  font-weight: 600;
+}
+
+.report-option:focus-within {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+.report-option input {
+  accent-color: var(--accent-primary);
 }
 
 /* =====================================================

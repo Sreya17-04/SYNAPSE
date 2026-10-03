@@ -109,6 +109,14 @@ const quickPostTrigger = document.getElementById("quick-post-trigger");
 const closeModalBtn = document.getElementById("close-modal");
 const cancelPostBtn = document.getElementById("cancel-post");
 
+const reportModal = document.getElementById("report-modal");
+const reportForm = document.getElementById("report-form");
+
+const closeReportModalBtn = document.getElementById("close-report-modal");
+const cancelReportBtn = document.getElementById("cancel-report");
+const submitReportBtn = document.getElementById("submit-report-btn");
+const reportPostTitle = document.getElementById("report-post-title");
+
 const searchInput = document.getElementById("search-input");
 const sortSelect = document.getElementById("sort-select");
 
@@ -147,6 +155,17 @@ let currentSearch = "";
 let currentSort = "latest";
 
 const SAVED_KEY = "synapse_saved_posts";
+
+// Post ids this student has already reported from the open page. Keeps the
+// report button from firing a second request; the server enforces the same
+// rule for reports filed from another tab (409).
+const reportedPostIds = new Set();
+
+// The post currently loaded in the report dialog, and a guard so a double
+// click (or an impatient Enter) cannot submit the same report twice.
+let reportTargetPostId = null;
+let reportInFlight = false;
+let reportLastFocusedElement = null;
 
 // =====================================================
 // UTILITY FUNCTIONS
@@ -846,6 +865,8 @@ function renderPostCard(post, savedIds) {
                     🔖 ${isSaved ? "Saved" : "Save"}
                 </button>
 
+                ${canReportPost(post) ? reportButtonHTML(post) : ""}
+
             </div>
 
         </div>
@@ -959,6 +980,13 @@ function renderPostCard(post, savedIds) {
         .querySelector(".share-btn")
         ?.addEventListener("click", () => {
             sharePost(post);
+        });
+
+    // Report
+    card
+        .querySelector(".report-btn")
+        ?.addEventListener("click", () => {
+            openReportModal(post);
         });
 
     // Delete
@@ -1333,6 +1361,252 @@ async function deletePost(postId) {
 }
 
 // =====================================================
+// REPORT POST
+// =====================================================
+
+// Offered only to a signed-in student, never on their own post.
+// requireStudentSession() re-checks this when the dialog opens, so a stale or
+// hand-edited session cannot reach the endpoint.
+function canReportPost(post) {
+    const isAdmin =
+        userRole === "admin" ||
+        currentUser?.role === "admin";
+
+    return Boolean(
+        token &&
+        currentUser &&
+        !isAdmin &&
+        !post.isOwner
+    );
+}
+
+function reportButtonHTML(post) {
+    if (reportedPostIds.has(post._id)) {
+        return `
+            <button
+                class="action-btn report-btn reported"
+                type="button"
+                disabled
+                title="You have already reported this post"
+                aria-label="You have already reported this post"
+            >
+                🚩 Reported
+            </button>
+        `;
+    }
+
+    return `
+        <button
+            class="action-btn report-btn"
+            data-id="${post._id}"
+            type="button"
+            title="Report this post"
+            aria-label="Report this post"
+        >
+            🚩 Report
+        </button>
+    `;
+}
+
+// Back to an untouched state: no reason selected, no leftover highlight.
+function resetReportForm() {
+    reportForm?.reset();
+
+    reportForm
+        ?.querySelectorAll(".report-option")
+        .forEach(label => label.classList.remove("selected"));
+}
+
+function openReportModal(post) {
+    if (!reportModal || !post) return;
+
+    if (!requireStudentSession()) return;
+
+    if (reportedPostIds.has(post._id)) {
+        showToast(
+            "You have already reported this post.",
+            "info"
+        );
+        return;
+    }
+
+    reportTargetPostId = post._id;
+    reportLastFocusedElement = document.activeElement;
+
+    resetReportForm();
+
+    // textContent, not innerHTML: the title is user-authored.
+    if (reportPostTitle) {
+        reportPostTitle.textContent =
+            post.title || "Untitled post";
+    }
+
+    reportModal.classList.add("show");
+
+    reportModal
+        .querySelector('input[name="report-reason"]')
+        ?.focus();
+}
+
+function closeReportModal() {
+    if (!reportModal?.classList.contains("show")) return;
+
+    reportModal.classList.remove("show");
+
+    resetReportForm();
+
+    reportTargetPostId = null;
+
+    reportLastFocusedElement?.focus();
+}
+
+async function submitReport(event) {
+    event.preventDefault();
+
+    const postId = reportTargetPostId;
+
+    // reportInFlight stops a double click or an impatient Enter from filing
+    // the same report twice while the first request is still running.
+    if (!postId || reportInFlight) return;
+
+    const selectedReason = reportForm?.querySelector(
+        'input[name="report-reason"]:checked'
+    );
+
+    if (!selectedReason) {
+        showToast("Please select a reason.", "error");
+        return;
+    }
+
+    if (reportedPostIds.has(postId)) {
+        showToast(
+            "You have already reported this post.",
+            "info"
+        );
+        closeReportModal();
+        return;
+    }
+
+    reportInFlight = true;
+
+    if (submitReportBtn) {
+        submitReportBtn.disabled = true;
+        submitReportBtn.textContent = "Submitting...";
+    }
+
+    try {
+        const response = await authFetch(
+            `${API_URL}/api/posts/${postId}/report`,
+            {
+                method: "POST",
+                body: JSON.stringify({
+                    reason: selectedReason.value
+                })
+            }
+        );
+
+        // Already reported from another tab or device: mark it reported here
+        // too instead of leaving the same button to keep failing.
+        if (response.status === 409) {
+            reportedPostIds.add(postId);
+
+            // Only close if the dialog still belongs to this post.
+            if (reportTargetPostId === postId) {
+                closeReportModal();
+            }
+
+            displayPosts();
+
+            showToast(
+                await readError(
+                    response,
+                    "You have already reported this post."
+                ),
+                "info"
+            );
+
+            return;
+        }
+
+        if (!response.ok) {
+            throw new Error(
+                await readError(
+                    response,
+                    "Failed to submit report"
+                )
+            );
+        }
+
+        const data = await response.json().catch(() => ({}));
+
+        reportedPostIds.add(postId);
+
+        if (reportTargetPostId === postId) {
+            closeReportModal();
+        }
+
+        displayPosts();
+
+        showToast(
+            data.message ||
+            "Report submitted. A moderator will review it.",
+            "success"
+        );
+
+    } catch (error) {
+        if (error.message.startsWith("Session expired")) {
+            return;
+        }
+
+        console.error("Report error:", error);
+
+        showToast(
+            error.message || "Failed to submit report.",
+            "error"
+        );
+
+    } finally {
+        reportInFlight = false;
+
+        if (submitReportBtn) {
+            submitReportBtn.disabled = false;
+            submitReportBtn.textContent = "Submit Report";
+        }
+    }
+}
+
+// Highlight the selected reason. form.reset() does not fire change, so the
+// classes are cleared explicitly in resetReportForm().
+reportForm?.addEventListener("change", () => {
+    reportForm
+        .querySelectorAll(".report-option")
+        .forEach(label => {
+            label.classList.toggle(
+                "selected",
+                Boolean(label.querySelector("input")?.checked)
+            );
+        });
+});
+
+reportForm?.addEventListener("submit", submitReport);
+
+cancelReportBtn?.addEventListener(
+    "click",
+    closeReportModal
+);
+
+closeReportModalBtn?.addEventListener(
+    "click",
+    closeReportModal
+);
+
+reportModal?.addEventListener("click", event => {
+    if (event.target === reportModal) {
+        closeReportModal();
+    }
+});
+
+// =====================================================
 // SEARCH
 // =====================================================
 
@@ -1513,12 +1787,21 @@ function closeModal() {
 }
 
 function trapModalFocus(event) {
-    if (event.key !== "Tab" || !postModal?.classList.contains("show")) {
+    if (event.key !== "Tab") {
+        return;
+    }
+
+    // Only one dialog is ever open; trap Tab inside whichever it is.
+    const openDialog = [postModal, reportModal].find(
+        modal => modal?.classList.contains("show")
+    );
+
+    if (!openDialog) {
         return;
     }
 
     const focusable = [
-        ...postModal.querySelectorAll(
+        ...openDialog.querySelectorAll(
             FOCUSABLE_SELECTOR
         )
     ].filter(el => el.offsetParent !== null);
@@ -1591,6 +1874,7 @@ document.addEventListener(
     event => {
         if (event.key === "Escape") {
             closeModal();
+            closeReportModal();
             return;
         }
 

@@ -124,6 +124,7 @@ Public unless marked. Mutating routes need `Authorization: Bearer <token>`.
 | `DELETE` | `/api/posts/:id` | owner or admin |
 | `PATCH` | `/api/posts/:id/like` | token |
 | `POST` | `/api/posts/:id/comment` | token |
+| `POST` | `/api/posts/:id/report` | token (rate limited) |
 | `GET` | `/api/top-discussions` | — |
 | `GET` | `/api/announcements` | — |
 | `GET` | `/api/stats` | — |
@@ -136,6 +137,7 @@ Public unless marked. Mutating routes need `Authorization: Bearer <token>`.
 | `DELETE` | `/api/admin/posts/:id` | admin |
 | `GET` | `/api/admin/users` | admin |
 | `PATCH` | `/api/admin/users/:id/flag` | admin |
+| `DELETE` | `/api/admin/users/:id` | admin |
 
 `GET /api/posts` accepts `?limit=` (1–100) and `?category=`. The admin list
 endpoints accept `?page=` and `?limit=` (≤200).
@@ -153,6 +155,12 @@ plain strings, not Mongoose references. This is simple and fast for a forum
 where names rarely change, but it means a rename does not cascade and there is
 no referential integrity.
 
+**Deleting an account cascades by hand.** Because those references are strings,
+`DELETE /api/admin/users/:id` explicitly removes the account's posts, its
+comments on other posts, its likes (recomputing the `likes` counter), and any
+`savedPosts` entries pointing at its posts. Admin accounts cannot be deleted,
+and the action is recorded in the audit log as `user.deleted`.
+
 **Tokens are revocable.** Each token embeds the user's `tokenVersion`;
 `POST /api/auth/logout` increments it, retiring every token issued to that user
 on every device. The cost is that logout is "log out everywhere", not a single
@@ -164,7 +172,7 @@ not a cosmetic label.
 
 **Rate limiting.** `/api/*` has a broad 600/15min backstop. Login is limited to
 10 attempts per 15 minutes keyed by IP + submitted email, registration to 5 per
-hour per IP.
+hour per IP, and reports to 10 per hour per IP.
 
 **The API base URL is derived, not hardcoded.** `frontend/config.js` computes it
 from `window.location.origin`, so the app works on any port or host. Adding a
@@ -176,8 +184,10 @@ CORS check and the CSP `connect-src`.
 - No test suite.
 - No moderation audit trail — who flagged or deleted what is not recorded.
 - Comments cannot be edited or deleted by their author.
-- There is no student-facing "report" flow; the `flagged` post status is only
-  ever set by an admin.
+- Students can file a report from the feed (`POST /api/posts/:id/report`), but
+  the moderation queue it feeds has no admin UI yet — reports are only
+  readable through the API. The `flagged` post status is still only ever set
+  by an admin.
 - Saved posts live in `localStorage`, so they are per-device and not synced.
 - The CSP still allows `'unsafe-inline'` scripts because the auth pages carry
   inline `<script>` blocks. Moving those into files would let it be tightened.
