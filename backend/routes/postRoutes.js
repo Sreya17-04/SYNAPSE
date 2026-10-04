@@ -424,6 +424,34 @@ router.get("/saved", protect, async (req, res) => {
 });
 
 // ==========================================
+// GET /api/posts/:id
+// A single post. Shared links deep-link straight to one discussion, so this
+// has to work even when the post sits beyond the feed cap or is filtered out
+// of the reader's current view. Flagged posts stay hidden from non-admins,
+// exactly like the public feed. Registered after /saved so the static path
+// still wins over the :id pattern.
+// ==========================================
+router.get("/:id", optionalAuth, async (req, res) => {
+    try {
+        const post = await Post.findById(req.params.id);
+
+        const isAdmin = Boolean(req.user && req.user.role === "admin");
+
+        // A missing post and a hidden one are reported the same way, so the
+        // endpoint cannot be used to probe for removed content.
+        if (!post || (post.status === "flagged" && !isAdmin)) {
+            return res.status(404).json({ message: "Post not found." });
+        }
+
+        res.status(200).json(toPublicPost(post, req.user ? identityOf(req.user) : null));
+
+    } catch (error) {
+        console.error("Fetch post error:", error);
+        res.status(500).json({ message: "Failed to fetch post" });
+    }
+});
+
+// ==========================================
 // PATCH /api/posts/:id/save
 // Toggle a post in the caller's saved list.
 // ==========================================

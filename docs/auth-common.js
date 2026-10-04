@@ -20,6 +20,37 @@ window.Auth = (function () {
         localStorage.setItem(USER_KEY, JSON.stringify(data.user));
     }
 
+    /**
+     * Only same-origin targets are safe to bounce back to after a sign-in.
+     * Rejects URLs that leave the site (other origins, protocol-relative
+     * "//host", "javascript:" values) - everything else is reduced to a
+     * path the current origin can serve.
+     */
+    function safeReturnUrl(value) {
+        if (typeof value !== "string" || !value.trim()) {
+            return null;
+        }
+
+        try {
+            const url = new URL(value.trim(), window.location.origin);
+
+            if (url.origin !== window.location.origin) {
+                return null;
+            }
+
+            return `${url.pathname}${url.search}${url.hash}`;
+        } catch {
+            return null;
+        }
+    }
+
+    /** The validated ?return= target of the current page, or the default. */
+    function returnTarget(defaultTarget) {
+        const params = new URLSearchParams(window.location.search);
+
+        return safeReturnUrl(params.get("return")) || defaultTarget;
+    }
+
     /** Send an existing session to the page matching its role. */
     function redirectIfLoggedIn() {
         const token = getToken();
@@ -29,7 +60,14 @@ window.Auth = (function () {
             return;
         }
 
-        window.location.replace(role === "admin" ? "admin.html" : "index.html");
+        // Students come back to the page they were sent from (a shared post
+        // hash survives the trip through the login form). An admin always
+        // lands on the dashboard.
+        const target = role === "admin"
+            ? "admin.html"
+            : returnTarget("index.html");
+
+        window.location.replace(target);
     }
 
     function clearSession() {
@@ -85,6 +123,8 @@ window.Auth = (function () {
         getRole,
         persistSession,
         redirectIfLoggedIn,
+        safeReturnUrl,
+        returnTarget,
         clearSession,
         showAlert,
         readError

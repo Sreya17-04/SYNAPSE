@@ -16,6 +16,18 @@ let currentUser = JSON.parse(
 );
 let userRole = localStorage.getItem("synapse_role");
 
+// Build the sign-in URL that comes back to this exact page (view, search and
+// the shared post hash included), so opening a shared link while logged out
+// lands on that link after signing in instead of a bare index.html.
+function loginRedirectUrl() {
+    const returnTo =
+        window.location.pathname +
+        window.location.search +
+        window.location.hash;
+
+    return `login.html?return=${encodeURIComponent(returnTo)}`;
+}
+
 // Clears local auth state and bounces to the login page. Wrapped in a function
 // so every caller stops executing instead of falling through with a stale UI.
 function requireStudentSession() {
@@ -26,7 +38,7 @@ function requireStudentSession() {
 
         // replace() so Back does not return to a page that immediately
         // redirects again.
-        window.location.replace("login.html");
+        window.location.replace(loginRedirectUrl());
         return false;
     }
 
@@ -67,7 +79,7 @@ function handleSessionExpired() {
     localStorage.removeItem("synapse_role");
     localStorage.removeItem("synapse_user");
 
-    window.location.replace("login.html");
+    window.location.replace(loginRedirectUrl());
 }
 
 // Reads a JSON error message without assuming the body is JSON. A proxy or a
@@ -140,9 +152,6 @@ const navSaved = document.getElementById("nav-saved");
 const navMyposts = document.getElementById("nav-myposts");
 
 const heroExploreBtn = document.getElementById("hero-explore-btn");
-
-const navLinkHome = document.getElementById("nav-link-home");
-const navLinkExplore = document.getElementById("nav-link-explore");
 
 // =====================================================
 // STATE
@@ -1275,11 +1284,11 @@ function toggleSave(postId) {
 
 async function sharePost(post) {
     // Deep-link to the post instead of sharing the generic feed URL, so the
-    // recipient lands on the right discussion.
-    const shareUrl = new URL(
-        window.location.href
-    );
+    // recipient lands on the right discussion. Any search/query the reader
+    // happens to have is stripped so the link opens only that post.
+    const shareUrl = new URL(window.location.href);
 
+    shareUrl.search = "";
     shareUrl.hash = `post-${post._id}`;
 
     const shareData = {
@@ -1293,7 +1302,11 @@ async function sharePost(post) {
             await navigator.share(shareData);
             return;
         } catch (error) {
-            // User cancelled sharing
+            // Share sheet dismissed: do not silently fall through to the
+            // clipboard, that would copy a link the reader never asked for.
+            if (error && error.name === "AbortError") {
+                return;
+            }
         }
     }
 
@@ -1314,6 +1327,129 @@ async function sharePost(post) {
         );
     }
 }
+
+// =====================================================
+// SHARED LINK DEEP REVEAL
+// =====================================================
+
+// Shared links look like index.html#post-<objectId>.
+const SHARED_POST_HASH = /^#post-([0-9a-f]{24})$/i;
+
+function getSharedPostId() {
+    const match = SHARED_POST_HASH.exec(window.location.hash || "");
+
+    return match ? match[1] : null;
+}
+
+// Drop the hash without reloading, so a dead link does not keep failing on
+// every navigation.
+function clearSharedPostHash() {
+    window.history.replaceState(
+        null,
+        "",
+        `${window.location.pathname}${window.location.search}`
+    );
+}
+
+// The shared card has to be visible whatever view, category or search the
+// reader had active, so start from the plain home feed first.
+function resetFeedForSharedPost() {
+    setActiveNav(navHome, "home");
+
+    if (searchInput && searchInput.value) {
+        searchInput.value = "";
+        currentSearch = "";
+        displayPosts();
+    }
+}
+
+async function revealSharedPost() {
+    const postId = getSharedPostId();
+
+    if (!postId) {
+        return false;
+    }
+
+    resetFeedForSharedPost();
+
+    let post = allPosts.find(item => item._id === postId);
+    let failure = null;
+
+    // Older than the feed cap or not in the loaded page: ask the API for that
+    // one post instead of failing the whole link.
+    if (!post) {
+        try {
+            const response = await authFetch(
+                `${API_URL}/api/posts/${postId}`
+            );
+
+            if (response.ok) {
+                post = await response.json();
+
+                allPosts = [
+                    post,
+                    ...allPosts.filter(item => item._id !== post._id)
+                ];
+
+                displayPosts();
+            } else if (response.status === 404) {
+                failure = "That discussion is no longer available.";
+            } else {
+                failure = await readError(
+                    response,
+                    "Could not open that discussion."
+                );
+            }
+        } catch (error) {
+            if (error.message.startsWith("Session expired")) {
+                return false;
+            }
+
+            failure = "Could not open that discussion.";
+        }
+    }
+
+    if (!post) {
+        showToast(
+            failure || "That discussion is no longer available.",
+            "error"
+        );
+
+        clearSharedPostHash();
+        return false;
+    }
+
+    const card = postsContainer?.querySelector(
+        `[data-post-id="${postId}"]`
+    );
+
+    if (!card) {
+        clearSharedPostHash();
+        return false;
+    }
+
+    card.classList.add("is-shared");
+    card.scrollIntoView({
+        behavior: "smooth",
+        block: "center"
+    });
+
+    window.setTimeout(() => {
+        card.classList.remove("is-shared");
+    }, 6000);
+
+    showToast("Showing the shared discussion.", "info");
+
+    return true;
+}
+
+// Pasting a shared link into an open tab, or following one from the address
+// bar, changes only the hash - no reload happens.
+window.addEventListener("hashchange", () => {
+    if (getSharedPostId()) {
+        revealSharedPost();
+    }
+});
 
 // =====================================================
 // DELETE POST
@@ -1745,22 +1881,6 @@ navMyposts?.addEventListener("click", () => {
 });
 
 // =====================================================
-// TOP NAVIGATION
-// =====================================================
-
-navLinkHome?.addEventListener("click", event => {
-    event.preventDefault();
-
-    setActiveNav(navHome, "home");
-});
-
-navLinkExplore?.addEventListener("click", event => {
-    event.preventDefault();
-
-    setActiveNav(navExplore, "explore");
-});
-
-// =====================================================
 // HERO EXPLORE BUTTON
 // =====================================================
 
@@ -2036,4 +2156,8 @@ postForm?.addEventListener(
     }
 
     await loadPosts();
+
+    // Shared links carry the target post in the hash; reveal it once the feed
+    // is in place.
+    await revealSharedPost();
 })();

@@ -52,7 +52,12 @@
                 window.Auth.persistSession(data);
 
                 window.Auth.showAlert("success", "Login successful! Redirecting...");
-                setTimeout(() => window.location.replace("index.html"), 800);
+
+                // Honours ?return= so a shared post link survives sign-in.
+                setTimeout(
+                    () => window.location.replace(window.Auth.returnTarget("index.html")),
+                    800
+                );
             } catch (error) {
                 window.Auth.showAlert("error", error.message);
                 submitBtn.disabled = false;

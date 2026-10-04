@@ -1135,6 +1135,18 @@ body.dark-mode #theme-icon .icon-moon {
   width: 100%;
 }
 
+/* The card a shared link opened: keeps the accent bar lit and rings the card
+   so the reader can see which discussion the link was for. */
+.post-card.is-shared {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-primary) 26%, transparent),
+    var(--shadow-lg);
+}
+
+.post-card.is-shared::before {
+  width: 100%;
+}
+
 .post-header {
   display: flex;
   align-items: center;
