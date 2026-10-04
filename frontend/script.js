@@ -84,6 +84,16 @@ function applyViewerRoleUI(serverConfirmed = false) {
     if (dashboardItem) {
         dashboardItem.style.display = isAdmin ? "" : "none";
     }
+
+    // Students own "My Posts"; the admin copy of the feed never shows it.
+    [
+        document.getElementById("nav-myposts"),
+        document.getElementById("menu-my-posts")
+    ].forEach((element) => {
+        if (element) {
+            element.style.display = cachedAdmin ? "none" : "";
+        }
+    });
 }
 
 // =====================================================
@@ -183,7 +193,6 @@ const announcementsList = document.getElementById("announcements-list");
 const feedSubtitle = document.getElementById("feed-subtitle");
 
 const navHome = document.getElementById("nav-home");
-const navExplore = document.getElementById("nav-explore");
 const navSaved = document.getElementById("nav-saved");
 const navMyposts = document.getElementById("nav-myposts");
 
@@ -195,7 +204,16 @@ const heroExploreBtn = document.getElementById("hero-explore-btn");
 
 let allPosts = [];
 let selectedCategory = "All";
-let activeView = "home";
+
+// Saved Posts and My Posts live at their own page URLs
+// (index.html?view=saved / index.html?view=myposts) so they can be
+// bookmarked, reloaded and shared. Anything else falls back to home.
+const DEDICATED_VIEWS = ["saved", "myposts"];
+const initialView = new URLSearchParams(window.location.search).get("view");
+
+let activeView = DEDICATED_VIEWS.includes(initialView)
+    ? initialView
+    : "home";
 let currentSearch = "";
 let currentSort = "latest";
 
@@ -422,14 +440,29 @@ document.addEventListener("click", (event) => {
 // PROFILE MENU
 // =====================================================
 
+// Saved Posts and My Posts are dedicated pages: navigating to their URL
+// reloads the site on that view rather than filtering the feed in place.
+function openDedicatedView(view) {
+    const query = `?view=${view}`;
+
+    if (window.location.search === query) {
+        document
+            .querySelector(".feed-container")
+            ?.scrollIntoView({ behavior: "smooth", block: "start" });
+        return;
+    }
+
+    window.location.href = `index.html${query}`;
+}
+
 document.getElementById("menu-my-posts")?.addEventListener("click", () => {
-    setActiveNav(navMyposts, "myposts");
     profileDropdown?.classList.remove("show");
+    openDedicatedView("myposts");
 });
 
 document.getElementById("menu-saved-posts")?.addEventListener("click", () => {
-    setActiveNav(navSaved, "saved");
     profileDropdown?.classList.remove("show");
+    openDedicatedView("saved");
 });
 
 // =====================================================
@@ -1892,28 +1925,61 @@ function setActiveNav(element, view) {
         });
 }
 
+// Home Feed drops back to the plain URL when the reader is on one of the
+// dedicated views, so the address bar always matches what is on screen.
 navHome?.addEventListener("click", () => {
+    if (activeView !== "home") {
+        window.location.href = "index.html";
+        return;
+    }
+
     setActiveNav(navHome, "home");
 });
 
-navExplore?.addEventListener("click", () => {
-    setActiveNav(navExplore, "explore");
-});
-
 navSaved?.addEventListener("click", () => {
-    setActiveNav(navSaved, "saved");
+    openDedicatedView("saved");
 });
 
 navMyposts?.addEventListener("click", () => {
-    setActiveNav(navMyposts, "myposts");
+    openDedicatedView("myposts");
 });
+
+// =====================================================
+// DEDICATED VIEW LANDING STATE
+// =====================================================
+
+// The markup ships with Home Feed highlighted; fix the highlight and the
+// document title when the page loaded on ?view=saved / ?view=myposts.
+if (activeView !== "home") {
+    [navHome, navSaved, navMyposts].forEach((button) => {
+        button?.classList.remove("active");
+        button?.setAttribute("aria-current", "false");
+    });
+
+    const activeButton = activeView === "saved" ? navSaved : navMyposts;
+
+    activeButton?.classList.add("active");
+    activeButton?.setAttribute("aria-current", "page");
+
+    document.title =
+        activeView === "saved"
+            ? "Saved Posts - SYNAPSE"
+            : "My Posts - SYNAPSE";
+}
 
 // =====================================================
 // HERO EXPLORE BUTTON
 // =====================================================
 
+// "Explore" was only a popular-sorted copy of the same feed, so the hero
+// button lands on the home feed instead of a second, duplicate view.
 heroExploreBtn?.addEventListener("click", () => {
-    setActiveNav(navExplore, "explore");
+    if (activeView !== "home") {
+        window.location.href = "index.html";
+        return;
+    }
+
+    setActiveNav(navHome, "home");
 });
 
 // =====================================================
