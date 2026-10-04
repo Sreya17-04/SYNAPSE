@@ -12,9 +12,6 @@
     </head>
 <body>
     <svg xmlns="http://www.w3.org/2000/svg" class="icon-sprite" hidden aria-hidden="true" focusable="false">
-        <symbol id="i-check" viewBox="0 0 24 24">
-            <path d="m5.5 12.6 4.4 4.4L18.5 8.4"></path>
-        </symbol>
         <symbol id="i-arrow" viewBox="0 0 24 24">
             <path d="M5 12h13"></path>
             <path d="m13 7 5 5-5 5"></path>
@@ -26,79 +23,67 @@
     </svg>
 
     <div class="auth-page">
-        <!-- Left Branding -->
-        <div class="brand-panel">
-            <span class="brand-orb" aria-hidden="true"></span>
-            <div class="brand-content">
+        <div class="auth-bg" aria-hidden="true">
+            <span class="orb orb-a"></span>
+            <span class="orb orb-b"></span>
+            <span class="orb orb-c"></span>
+
+            <span class="tile tile-a" data-parallax="0.035"></span>
+            <span class="tile tile-b" data-parallax="0.06"></span>
+            <span class="tile tile-c" data-parallax="0.045"></span>
+        </div>
+
+        <span class="cursor-glow" aria-hidden="true"></span>
+
+        <main class="form-box">
+            <div class="auth-brand">
                 <div class="brand-logo">S</div>
-                <div class="brand-name">SYNAPSE</div>
-                <div class="brand-tagline">Department Community Platform</div>
-                <div class="brand-features">
-                    <div class="brand-feature">
-                        <span class="feature-check"><svg class="icon" aria-hidden="true"><use href="#i-check"></use></svg></span>
-                        Share academic notes &amp; resources
-                    </div>
-                    <div class="brand-feature">
-                        <span class="feature-check"><svg class="icon" aria-hidden="true"><use href="#i-check"></use></svg></span>
-                        Discover placement &amp; internship tips
-                    </div>
-                    <div class="brand-feature">
-                        <span class="feature-check"><svg class="icon" aria-hidden="true"><use href="#i-check"></use></svg></span>
-                        Connect and collaborate with peers
-                    </div>
-                    <div class="brand-feature">
-                        <span class="feature-check"><svg class="icon" aria-hidden="true"><use href="#i-check"></use></svg></span>
-                        Stay updated with announcements
-                    </div>
+                <div>
+                    <div class="brand-name">SYNAPSE</div>
+                    <div class="brand-sub">Department Community</div>
                 </div>
             </div>
-        </div>
 
-        <!-- Right Login Form -->
-        <div class="form-panel">
-            <div class="form-box">
-                <span class="form-eyebrow">
-                    <svg class="icon" aria-hidden="true"><use href="#i-shield"></use></svg>
-                    Student access
-                </span>
-                <h2>Student Login</h2>
-                <p>Welcome back! Sign in to your SYNAPSE account.</p>
+            <span class="form-eyebrow">
+                <svg class="icon" aria-hidden="true"><use href="#i-shield"></use></svg>
+                Student access
+            </span>
+            <h2>Student Login</h2>
 
-                <div class="alert-msg alert-error" id="alert-error" role="alert" aria-live="assertive"></div>
-                <div class="alert-msg alert-success" id="alert-success" role="alert" aria-live="assertive"></div>
+            <div class="alert-msg alert-error" id="alert-error" role="alert" aria-live="assertive"></div>
+            <div class="alert-msg alert-success" id="alert-success" role="alert" aria-live="assertive"></div>
 
-                <form id="login-form">
-                    <div class="form-group">
-                        <label for="username">University Registration Number</label>
-                        <input type="text" id="username" required
-                            autocomplete="username" autocapitalize="characters" spellcheck="false"
-                            placeholder="TKM24CS027">
-                    </div>
-                    <div class="form-group">
-                        <label for="password">Roll Number</label>
-                        <input type="password" id="password" required
-                            autocomplete="current-password" placeholder="Your roll number">
-                    </div>
-                    <button type="submit" class="btn-submit" id="submit-btn">
-                        Sign In
-                        <svg class="icon" aria-hidden="true"><use href="#i-arrow"></use></svg>
-                    </button>
-                </form>
-
-                <div class="admin-link-box">
-                    Admin?
-                    <a href="admin-login.html">
-                        Admin Login
-                        <svg class="icon" aria-hidden="true"><use href="#i-arrow"></use></svg>
-                    </a>
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="username">University Registration Number</label>
+                    <input type="text" id="username" required
+                        autocomplete="username" autocapitalize="characters" spellcheck="false">
                 </div>
+                <div class="form-group">
+                    <label for="password">Roll Number</label>
+                    <input type="password" id="password" required
+                        autocomplete="current-password">
+                </div>
+                <button type="submit" class="btn-submit" id="submit-btn">
+                    Sign In
+                    <svg class="icon" aria-hidden="true"><use href="#i-arrow"></use></svg>
+                </button>
+            </form>
+
+            <div class="admin-link-box">
+                Admin?
+                <a href="admin-login.html">
+                    Admin Login
+                    <svg class="icon" aria-hidden="true"><use href="#i-arrow"></use></svg>
+                </a>
             </div>
-        </div>
+        </main>
     </div>
 
     <script src="config.js"></script>
     <script src="auth-common.js"></script>
     <script src="login.js"></script>
+    <script src="auth-fx.js"></script>
 
 
     </body>

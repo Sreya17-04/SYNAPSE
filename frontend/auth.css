@@ -3,6 +3,10 @@
    Used by login.html and register.html.
    Lives in a file rather than a <style> block so the page can
    run under a Content-Security-Policy without 'unsafe-inline'.
+
+   One centred glass card on a single ambient stage - no split
+   panels, no marketing copy. Motion (floating orbs, glass tiles
+   and the pointer glow) is decorative only and lives in auth-fx.js.
    ===================================================== */
 
 :root {
@@ -21,30 +25,23 @@
     --radius: 14px;
     --grad-cta: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
     --shadow-card: 0 30px 60px -30px rgba(30, 27, 90, 0.35), 0 10px 30px -20px rgba(79, 70, 229, 0.3);
+    --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
     font-family: 'Inter', system-ui, sans-serif;
-    background: var(--bg);
     min-height: 100vh;
     display: flex;
     flex-direction: column;
     color: var(--text);
     -webkit-font-smoothing: antialiased;
-}
-
-/* Ambient wash behind the split layout. */
-body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    z-index: -1;
     background:
-        radial-gradient(760px 460px at 4% -10%, rgba(99, 102, 241, 0.18), transparent 60%),
-        radial-gradient(700px 420px at 102% 6%, rgba(236, 72, 153, 0.14), transparent 58%);
-    pointer-events: none;
+        radial-gradient(1100px 700px at 10% -18%, rgba(99, 102, 241, 0.24), transparent 62%),
+        radial-gradient(920px 640px at 108% 4%, rgba(236, 72, 153, 0.2), transparent 58%),
+        radial-gradient(820px 560px at 48% 118%, rgba(56, 189, 248, 0.18), transparent 62%),
+        linear-gradient(155deg, #f8f9ff 0%, #eef1fb 48%, #f9f6ff 100%);
 }
 
 ::selection { background: rgba(99, 102, 241, 0.24); }
@@ -63,157 +60,178 @@ body::before {
     display: block;
 }
 
+/* ---------- Stage: background layers + one centred card ---------- */
+
 .auth-page {
+    position: relative;
     flex: 1;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    min-height: 100vh;
-}
-
-/* ---------- Left branding panel ---------- */
-
-.brand-panel {
-    background: linear-gradient(140deg, #3b31c9 0%, #6d28d9 48%, #9333ea 100%);
     display: flex;
-    flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 3.5rem;
-    color: #fff;
-    position: relative;
-    overflow: hidden;
+    padding: 2.75rem 1.25rem;
     isolation: isolate;
 }
 
-.brand-panel::before {
-    content: '';
+.auth-bg {
     position: absolute;
     inset: 0;
-    background-image:
-        linear-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255, 255, 255, 0.07) 1px, transparent 1px);
-    background-size: 44px 44px;
-    -webkit-mask-image: radial-gradient(120% 90% at 20% 10%, #000 5%, transparent 75%);
-    mask-image: radial-gradient(120% 90% at 20% 10%, #000 5%, transparent 75%);
-}
-
-.brand-panel::after {
-    content: '';
-    position: absolute;
-    width: 340px;
-    height: 340px;
-    right: -110px;
-    top: -120px;
-    border-radius: 50%;
-    background: radial-gradient(circle at 35% 35%, rgba(255, 255, 255, 0.5), transparent 68%);
-    animation: brandFloat 16s ease-in-out infinite;
     z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
 }
 
-.brand-orb {
+/* Floating colour blooms. */
+.orb {
     position: absolute;
-    width: 260px;
-    height: 260px;
-    left: -90px;
-    bottom: -110px;
     border-radius: 50%;
-    background: radial-gradient(circle at 50% 50%, rgba(236, 72, 153, 0.65), transparent 70%);
-    animation: brandFloat 20s ease-in-out infinite reverse;
-    z-index: 0;
+    animation: orbFloat 20s ease-in-out infinite;
+    will-change: transform;
 }
 
-.brand-content { position: relative; z-index: 2; text-align: center; max-width: 420px; }
+.orb-a {
+    width: 360px; height: 360px;
+    left: -110px; top: -130px;
+    background: radial-gradient(circle at 36% 32%, rgba(99, 102, 241, 0.5), rgba(99, 102, 241, 0) 68%);
+}
+
+.orb-b {
+    width: 320px; height: 320px;
+    right: -90px; top: 14%;
+    background: radial-gradient(circle at 60% 40%, rgba(236, 72, 153, 0.42), rgba(236, 72, 153, 0) 70%);
+    animation-duration: 26s;
+    animation-direction: reverse;
+}
+
+.orb-c {
+    width: 400px; height: 400px;
+    left: 26%; bottom: -190px;
+    background: radial-gradient(circle at 50% 50%, rgba(56, 189, 248, 0.34), rgba(56, 189, 248, 0) 70%);
+    animation-duration: 30s;
+}
+
+/* Glass shards that shift with the pointer (depth set in auth-fx.js). */
+.tile {
+    position: absolute;
+    border-radius: 26px;
+    background: linear-gradient(140deg, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.16));
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    box-shadow: 0 26px 54px -34px rgba(45, 32, 120, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    transform: translate3d(var(--px, 0px), var(--py, 0px), 0);
+    transition: transform 0.7s var(--ease-out);
+    will-change: transform;
+}
+
+.tile-a {
+    width: 156px; height: 156px;
+    left: 9%; top: 15%;
+    rotate: -14deg;
+}
+
+.tile-b {
+    width: 118px; height: 118px;
+    right: 11%; bottom: 17%;
+    rotate: 12deg;
+}
+
+.tile-c {
+    width: 92px; height: 92px;
+    right: 20%; top: 12%;
+    rotate: -7deg;
+    border-radius: 50%;
+}
+
+/* Soft bloom trailing the pointer. */
+.cursor-glow {
+    position: fixed;
+    inset: 0;
+    width: 540px;
+    height: 540px;
+    margin: auto;
+    z-index: 0;
+    border-radius: 50%;
+    pointer-events: none;
+    background: radial-gradient(circle,
+        rgba(129, 140, 248, 0.46) 0%,
+        rgba(236, 72, 153, 0.26) 42%,
+        rgba(236, 72, 153, 0) 70%);
+    filter: blur(26px);
+    will-change: transform;
+    transition: transform 0.6s var(--ease-out);
+}
+
+/* ---------- The login card ---------- */
+
+.form-box {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 430px;
+    padding: 2.3rem 2.25rem 1.95rem;
+    border-radius: 28px;
+    /* Specular highlight tracks the pointer through --mx/--my. */
+    background:
+        radial-gradient(360px circle at var(--mx, 50%) var(--my, 0%), rgba(255, 255, 255, 0.86), transparent 62%),
+        rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.85);
+    box-shadow:
+        0 44px 90px -48px rgba(45, 32, 120, 0.6),
+        0 12px 32px -26px rgba(79, 70, 229, 0.55),
+        inset 0 1px 0 rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(24px) saturate(165%);
+    -webkit-backdrop-filter: blur(24px) saturate(165%);
+    animation: formIn 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.auth-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    margin-bottom: 1.35rem;
+}
 
 .brand-logo {
-    width: 74px; height: 74px;
-    background: rgba(255, 255, 255, 0.18);
-    border-radius: 22px;
-    display: flex; align-items: center; justify-content: center;
+    width: 52px;
+    height: 52px;
+    flex: none;
+    border-radius: 16px;
+    background: var(--grad-cta);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     font-family: 'Outfit', sans-serif;
-    font-size: 2.1rem; font-weight: 800;
-    margin: 0 auto 1.5rem;
-    backdrop-filter: blur(10px);
-    border: 1.5px solid rgba(255, 255, 255, 0.34);
-    box-shadow: 0 18px 40px -18px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+    font-size: 1.5rem;
+    font-weight: 800;
     position: relative;
     overflow: hidden;
+    box-shadow: 0 16px 30px -14px rgba(99, 102, 241, 0.95), inset 0 1px 0 rgba(255, 255, 255, 0.55);
 }
 
 .brand-logo::after {
     content: '';
     position: absolute;
     inset: 0;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.35), transparent 60%);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.4), transparent 62%);
 }
 
 .brand-name {
     font-family: 'Outfit', sans-serif;
-    font-size: 2.6rem; font-weight: 800;
-    letter-spacing: -1px;
-    margin-bottom: 0.4rem;
-    text-shadow: 0 6px 24px rgba(0, 0, 0, 0.25);
+    font-size: 1.5rem;
+    font-weight: 800;
+    letter-spacing: -0.6px;
+    line-height: 1.1;
+    color: var(--text);
 }
 
-.brand-tagline {
-    font-size: 1rem;
-    color: rgba(255, 255, 255, 0.85);
-    margin-bottom: 2.5rem;
-    letter-spacing: 0.2px;
-}
-
-.brand-features {
-    display: flex; flex-direction: column; gap: 0.75rem;
-    text-align: left;
-}
-
-.brand-feature {
-    display: flex; align-items: center; gap: 0.8rem;
-    background: rgba(255, 255, 255, 0.13);
-    border: 1px solid rgba(255, 255, 255, 0.18);
-    padding: 0.85rem 1.15rem;
-    border-radius: 14px;
-    font-size: 0.9rem;
-    font-weight: 500;
-    backdrop-filter: blur(10px);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
-    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), background 0.25s;
-}
-
-.brand-feature:hover {
-    transform: translateX(6px);
-    background: rgba(255, 255, 255, 0.2);
-}
-
-.brand-feature .feature-check {
-    width: 26px;
-    height: 26px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.92);
-    color: #6d28d9;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex: none;
-    box-shadow: 0 6px 14px -8px rgba(0, 0, 0, 0.6);
-}
-
-.brand-feature .feature-check .icon { stroke-width: 2.6; }
-
-/* ---------- Right form panel ---------- */
-
-.form-panel {
-    display: flex;
-    flex-direction: column;
-    align-items: center; justify-content: center;
-    padding: 3rem 2rem;
-    background: var(--card);
-    border-left: 1px solid var(--border);
-    position: relative;
-}
-
-.form-box {
-    width: 100%; max-width: 420px;
-    animation: formIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+.brand-sub {
+    margin-top: 0.18rem;
+    font-size: 0.66rem;
+    font-weight: 700;
+    letter-spacing: 1.4px;
+    text-transform: uppercase;
+    color: var(--text-muted);
 }
 
 .form-eyebrow {
@@ -225,8 +243,8 @@ body::before {
     letter-spacing: 1.1px;
     text-transform: uppercase;
     color: var(--accent);
-    background: var(--accent-light);
-    border: 1px solid rgba(99, 102, 241, 0.2);
+    background: rgba(238, 241, 255, 0.85);
+    border: 1px solid rgba(99, 102, 241, 0.22);
     padding: 0.3rem 0.75rem;
     border-radius: 999px;
     margin-bottom: 1.1rem;
@@ -234,14 +252,16 @@ body::before {
 
 .form-box h2 {
     font-family: 'Outfit', sans-serif;
-    font-size: 2rem; font-weight: 800;
+    font-size: 1.9rem;
+    font-weight: 800;
     letter-spacing: -0.8px;
     color: var(--text);
     margin-bottom: 0.4rem;
 }
 
 .form-box > p {
-    color: var(--text-secondary); font-size: 0.93rem;
+    color: var(--text-secondary);
+    font-size: 0.93rem;
     line-height: 1.6;
     margin-bottom: 1.75rem;
 }
@@ -249,18 +269,24 @@ body::before {
 .form-group { margin-bottom: 1.15rem; }
 
 .form-group label {
-    display: flex; align-items: center; gap: 0.4rem;
-    font-size: 0.82rem; font-weight: 700;
-    color: var(--text); margin-bottom: 0.45rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 0.45rem;
     letter-spacing: 0.1px;
 }
 
 .form-group input {
-    width: 100%; padding: 0.85rem 1rem;
+    width: 100%;
+    padding: 0.85rem 1rem;
     border-radius: 12px;
-    border: 1.5px solid var(--border);
-    background: #f8f9fe;
-    color: var(--text); font-size: 0.95rem;
+    border: 1.5px solid rgba(228, 232, 244, 0.95);
+    background: rgba(255, 255, 255, 0.78);
+    color: var(--text);
+    font-size: 0.95rem;
     font-family: inherit;
     transition: border-color 0.16s, box-shadow 0.16s, background 0.16s;
 }
@@ -268,17 +294,23 @@ body::before {
 .form-group input::placeholder { color: var(--text-muted); }
 
 .form-group input:focus {
-    outline: none; border-color: var(--accent);
+    outline: none;
+    border-color: var(--accent);
     background: #fff;
     box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.14);
 }
 
 .btn-submit {
-    width: 100%; padding: 0.9rem;
-    background: var(--grad-cta); color: #fff;
-    border: none; border-radius: 12px;
-    font-weight: 700; font-size: 1rem;
-    cursor: pointer; font-family: inherit;
+    width: 100%;
+    padding: 0.9rem;
+    background: var(--grad-cta);
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    font-weight: 700;
+    font-size: 1rem;
+    cursor: pointer;
+    font-family: inherit;
     letter-spacing: 0.2px;
     box-shadow: 0 14px 30px -14px rgba(99, 102, 241, 0.9);
     transition: transform 0.16s, box-shadow 0.16s, filter 0.16s;
@@ -300,12 +332,15 @@ body::before {
 a.btn-submit { text-decoration: none; display: flex; }
 
 .form-footer {
-    text-align: center; margin-top: 1.5rem;
-    font-size: 0.88rem; color: var(--text-muted);
+    text-align: center;
+    margin-top: 1.5rem;
+    font-size: 0.88rem;
+    color: var(--text-muted);
 }
 
 .form-footer a {
-    color: var(--accent); font-weight: 600;
+    color: var(--accent);
+    font-weight: 600;
     text-decoration: underline;
     text-decoration-color: rgba(99, 102, 241, 0.35);
     text-underline-offset: 3px;
@@ -315,9 +350,12 @@ a.btn-submit { text-decoration: none; display: flex; }
 .form-footer a:hover { text-decoration-color: var(--accent); }
 
 .admin-link-box {
-    text-align: center; margin-top: 1.75rem; padding-top: 1.4rem;
-    border-top: 1px solid var(--border);
-    font-size: 0.85rem; color: var(--text-muted);
+    text-align: center;
+    margin-top: 1.65rem;
+    padding-top: 1.35rem;
+    border-top: 1px solid rgba(228, 232, 244, 0.9);
+    font-size: 0.85rem;
+    color: var(--text-muted);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -326,62 +364,55 @@ a.btn-submit { text-decoration: none; display: flex; }
 }
 
 .admin-link-box a {
-    color: var(--text-secondary); font-weight: 700;
+    color: var(--text-secondary);
+    font-weight: 700;
     display: inline-flex;
     align-items: center;
     gap: 0.35rem;
     padding: 0.4rem 0.85rem;
-    border: 1px solid var(--border);
+    border: 1px solid rgba(228, 232, 244, 0.95);
     border-radius: 999px;
-    background: #f8f9fe;
-    transition: border-color 0.15s, color 0.15s, transform 0.15s;
+    background: rgba(255, 255, 255, 0.72);
+    transition: border-color 0.15s, color 0.15s, transform 0.15s, background 0.15s;
 }
 
 .admin-link-box a:hover {
     border-color: var(--accent);
     color: var(--accent);
+    background: #fff;
     transform: translateY(-1px);
 }
 
 /* ---------- Alerts ---------- */
 
 .alert-msg {
-    padding: 0.8rem 1rem; border-radius: 12px;
-    font-size: 0.88rem; font-weight: 600;
-    margin-bottom: 1.25rem; display: none;
-    align-items: center; gap: 0.6rem;
+    padding: 0.8rem 1rem;
+    border-radius: 12px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    margin-bottom: 1.25rem;
+    display: none;
+    align-items: center;
+    gap: 0.6rem;
     border-width: 1.5px;
     border-left-width: 4px;
 }
 
 .alert-error {
-    background: #fef2f2; color: #b91c1c; border-color: #fecaca;
+    background: #fef2f2;
+    color: #b91c1c;
+    border-color: #fecaca;
 }
 
 .alert-success {
-    background: #ecfdf5; color: #047857; border-color: #a7f3d0;
+    background: #ecfdf5;
+    color: #047857;
+    border-color: #a7f3d0;
 }
 
-/* ---------- Password strength meter (register) ---------- */
-
-.pw-strength {
-    height: 6px; border-radius: 999px;
-    background: var(--border);
-    overflow: hidden; margin-top: 0.6rem;
-}
-
-.pw-strength-bar {
-    height: 100%; width: 0;
-    background: var(--danger);
-    transition: width 0.2s, background 0.2s;
-    border-radius: 999px;
-}
-
-.pw-hint { font-size: 0.76rem; color: var(--text-muted); margin-top: 0.4rem; }
-
-@keyframes brandFloat {
+@keyframes orbFloat {
     0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
-    50% { transform: translate3d(-22px, 26px, 0) scale(1.08); }
+    50% { transform: translate3d(-26px, 30px, 0) scale(1.08); }
 }
 
 @keyframes formIn {
@@ -390,10 +421,14 @@ a.btn-submit { text-decoration: none; display: flex; }
 }
 
 @media (max-width: 768px) {
-    .auth-page { grid-template-columns: 1fr; }
-    .brand-panel { display: none; }
-    .form-panel { padding: 2.5rem 1.25rem; border-left: none; }
-    .form-box h2 { font-size: 1.7rem; }
+    .auth-page { padding: 1.75rem 1rem; }
+    .form-box { padding: 1.9rem 1.4rem 1.6rem; border-radius: 24px; }
+    .form-box h2 { font-size: 1.65rem; }
+    .tile { display: none; }
+    .cursor-glow { width: 340px; height: 340px; }
+    .orb-a { width: 260px; height: 260px; }
+    .orb-b { width: 230px; height: 230px; }
+    .orb-c { width: 280px; height: 280px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
