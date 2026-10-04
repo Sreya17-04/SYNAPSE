@@ -1695,13 +1695,15 @@ body.dark-mode .action-btn.liked {
 .guidelines-list li::after {
   content: '';
   position: absolute;
-  left: 0.57rem;
+  /* Same anchor as the ring: 0.5rem + half of the 18px circle, so the tick
+     lands dead centre instead of hugging the left edge. */
+  left: 1.0625rem;
   top: 50%;
-  width: 4.5px;
-  height: 8.5px;
+  width: 5px;
+  height: 9px;
   border-right: 2px solid var(--accent-primary);
   border-bottom: 2px solid var(--accent-primary);
-  transform: translateY(-65%) rotate(42deg);
+  transform: translate(-50%, -50%) rotate(42deg);
 }
 
 .guidelines-list li:hover::before {
