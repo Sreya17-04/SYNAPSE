@@ -85,15 +85,11 @@ function applyViewerRoleUI(serverConfirmed = false) {
         dashboardItem.style.display = isAdmin ? "" : "none";
     }
 
-    // Students own "My Posts"; the admin copy of the feed never shows it.
-    [
-        document.getElementById("nav-myposts"),
-        document.getElementById("menu-my-posts")
-    ].forEach((element) => {
-        if (element) {
-            element.style.display = cachedAdmin ? "none" : "";
-        }
-    });
+    // Sidebar "My Posts" belongs to students; the admin copy of the feed
+    // never shows it. (The profile dropdown no longer lists it either.)
+    if (navMyposts) {
+        navMyposts.style.display = cachedAdmin ? "none" : "";
+    }
 }
 
 // =====================================================
@@ -437,7 +433,7 @@ document.addEventListener("click", (event) => {
 });
 
 // =====================================================
-// PROFILE MENU
+// DEDICATED VIEW NAVIGATION
 // =====================================================
 
 // Saved Posts and My Posts are dedicated pages: navigating to their URL
@@ -454,16 +450,6 @@ function openDedicatedView(view) {
 
     window.location.href = `index.html${query}`;
 }
-
-document.getElementById("menu-my-posts")?.addEventListener("click", () => {
-    profileDropdown?.classList.remove("show");
-    openDedicatedView("myposts");
-});
-
-document.getElementById("menu-saved-posts")?.addEventListener("click", () => {
-    profileDropdown?.classList.remove("show");
-    openDedicatedView("saved");
-});
 
 // =====================================================
 // LOGOUT

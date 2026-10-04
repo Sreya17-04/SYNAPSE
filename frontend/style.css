@@ -856,6 +856,32 @@ body.dark-mode #theme-icon .icon-moon {
   gap: 0.22rem;
 }
 
+/* The Categories list is taller than its box; give it a small scroll area so
+   every category stays reachable without stretching the sidebar. Hover
+   transforms slide sideways, so the x-axis stays clipped. */
+#category-list {
+  max-height: 16rem;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  padding-right: 0.3rem;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-color) transparent;
+}
+
+#category-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+#category-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+#category-list::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 999px;
+}
+
 .sidebar-btn {
   position: relative;
   display: flex;
