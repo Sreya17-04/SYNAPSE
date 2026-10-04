@@ -30,7 +30,12 @@ function loginRedirectUrl() {
 
 // Clears local auth state and bounces to the login page. Wrapped in a function
 // so every caller stops executing instead of falling through with a stale UI.
-function requireStudentSession() {
+//
+// Student-only actions rely on the default behaviour, which sends an admin
+// session back to the dashboard. init() passes { allowAdmin: true } so
+// "Back to Community" can land admins on the feed instead of looping straight
+// back to admin.html.
+function requireStudentSession(options = {}) {
     if (!token || !currentUser) {
         localStorage.removeItem("synapse_token");
         localStorage.removeItem("synapse_role");
@@ -43,8 +48,10 @@ function requireStudentSession() {
     }
 
     if (userRole === "admin" || currentUser.role === "admin") {
-        window.location.replace("admin.html");
-        return false;
+        if (!options.allowAdmin) {
+            window.location.replace("admin.html");
+            return false;
+        }
     }
 
     return true;
@@ -2119,7 +2126,7 @@ postForm?.addEventListener(
 // the page only checked that the keys existed in localStorage, so an expired
 // 7-day token left a fully populated UI on screen until the first write failed.
 (async function init() {
-    if (!requireStudentSession()) {
+    if (!requireStudentSession({ allowAdmin: true })) {
         return;
     }
 
