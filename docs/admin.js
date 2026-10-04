@@ -26,7 +26,7 @@ try {
 
 // Redirect if not logged in
 if (!token || !adminUser) {
-    window.location.replace("admin-login.html");
+    window.location.replace("login.html");
     throw new Error("Admin authentication required.");
 }
 
@@ -64,7 +64,7 @@ async function adminFetch(url, options = {}) {
         localStorage.removeItem("synapse_role");
         localStorage.removeItem("synapse_user");
 
-        window.location.replace("admin-login.html");
+        window.location.replace("login.html");
 
         throw new Error("Session expired. Please log in again.");
     }
@@ -102,7 +102,7 @@ function handleAdminAuthFailure() {
     localStorage.removeItem("synapse_role");
     localStorage.removeItem("synapse_user");
 
-    window.location.replace("admin-login.html");
+    window.location.replace("login.html");
 }
 
 // =====================================================
@@ -427,7 +427,7 @@ function setupLogout() {
             );
 
             window.location.replace(
-                "admin-login.html"
+                "login.html"
             );
         }
     );

@@ -1,11 +1,11 @@
 /**
- * Student sign-in page.
+ * Unified sign-in page (students and admins share this form).
  * Requires config.js (SYNAPSE_API_URL) and auth-common.js (window.Auth)
  * to be loaded first.
  *
- * Students sign in with their university registration number as the username
- * and their roll number as the password; the server maps username to
- * universityRegNo. There is no registration flow anymore.
+ * The backend accepts two shapes on the same endpoint: an email identifies
+ * an admin, anything else is a university registration number (password is
+ * the roll number for students). There is no registration flow anymore.
  */
 (function () {
     const API = window.SYNAPSE_API_URL;
@@ -24,6 +24,9 @@
             const username = document.getElementById("username").value.trim();
             const password = document.getElementById("password").value;
             const submitBtn = document.getElementById("submit-btn");
+            const credentials = username.includes("@")
+                ? { email: username.toLowerCase(), password }
+                : { username, password };
 
             submitBtn.disabled = true;
             submitBtn.textContent = "Signing in...";
@@ -32,7 +35,7 @@
                 const response = await fetch(`${API}/api/auth/login`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ username, password })
+                    body: JSON.stringify(credentials)
                 });
 
                 if (!response.ok) {
@@ -43,21 +46,17 @@
 
                 const data = await response.json();
 
-                if (data.user.role === "admin") {
-                    throw new Error(
-                        "This is the student login. Please use the Admin Login."
-                    );
-                }
-
                 window.Auth.persistSession(data);
 
                 window.Auth.showAlert("success", "Login successful! Redirecting...");
 
-                // Honours ?return= so a shared post link survives sign-in.
-                setTimeout(
-                    () => window.location.replace(window.Auth.returnTarget("index.html")),
-                    800
-                );
+                // Admins land on the dashboard; students honour ?return= so a
+                // shared post link survives sign-in.
+                const target = data.user.role === "admin"
+                    ? "admin.html"
+                    : window.Auth.returnTarget("index.html");
+
+                setTimeout(() => window.location.replace(target), 800);
             } catch (error) {
                 window.Auth.showAlert("error", error.message);
                 submitBtn.disabled = false;

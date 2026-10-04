@@ -3,82 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SYNAPSE – Admin Login</title>
-    <meta name="theme-color" content="#0a0d17">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@600;700;800&display=swap">
-    <link rel="stylesheet" href="admin-auth.css">
-    </head>
+    <title>SYNAPSE - Sign In</title>
+    <meta http-equiv="refresh" content="0; url=login.html">
+    <meta name="robots" content="noindex">
+</head>
 <body>
-    <svg xmlns="http://www.w3.org/2000/svg" class="icon-sprite" hidden aria-hidden="true" focusable="false">
-        <symbol id="i-shield" viewBox="0 0 24 24">
-            <path d="M12 3.2 5 6v5.6c0 4.2 2.9 7.6 7 9.2 4.1-1.6 7-5 7-9.2V6l-7-2.8Z"></path>
-            <path d="m9.2 12.2 2 2 3.6-3.8"></path>
-        </symbol>
-        <symbol id="i-lock" viewBox="0 0 24 24">
-            <rect x="4.6" y="10.4" width="14.8" height="10.2" rx="2.4"></rect>
-            <path d="M8.4 10.4V7.8a3.6 3.6 0 0 1 7.2 0v2.6"></path>
-        </symbol>
-        <symbol id="i-arrow" viewBox="0 0 24 24">
-            <path d="M5 12h13"></path>
-            <path d="m13 7 5 5-5 5"></path>
-        </symbol>
-    </svg>
-
-    <div class="admin-login-wrap">
-        <div class="admin-badge">
-            <div class="admin-logo">S</div>
-            <div class="admin-brand-text">
-                <h1>SYNAPSE</h1>
-                <span>
-                    <svg class="icon" aria-hidden="true"><use href="#i-shield"></use></svg>
-                    Admin Portal
-                </span>
-            </div>
-        </div>
-
-        <div class="login-card">
-            <h2>Admin Login</h2>
-            <p>Restricted access. Authorized personnel only.</p>
-
-            <div class="security-notice">
-                <svg class="icon" aria-hidden="true"><use href="#i-lock"></use></svg>
-                This portal is monitored. Unauthorized access attempts are logged.
-            </div>
-
-            <div class="alert-msg alert-error" id="alert-error" role="alert" aria-live="assertive"></div>
-            <div class="alert-msg alert-success" id="alert-success" role="alert" aria-live="assertive"></div>
-
-            <form id="admin-login-form">
-                <div class="form-group">
-                    <label for="email">Admin Email</label>
-                    <input type="email" id="email" placeholder="admin@synapse.edu" required autocomplete="username">
-                </div>
-                <div class="form-group">
-                    <label for="password">Password</label>
-                    <input type="password" id="password" placeholder="Admin password" required autocomplete="current-password">
-                </div>
-                <button type="submit" class="btn-submit" id="submit-btn">
-                    Access Admin Panel
-                    <svg class="icon" aria-hidden="true"><use href="#i-arrow"></use></svg>
-                </button>
-            </form>
-
-            <div class="form-footer">
-                Student?
-                <a href="login.html">
-                    Student Login
-                    <svg class="icon" aria-hidden="true"><use href="#i-arrow"></use></svg>
-                </a>
-            </div>
-        </div>
-    </div>
-
-    <script src="config.js"></script>
-    <script src="auth-common.js"></script>
-    <script src="admin-login.js"></script>
-
-
-    </body>
+    <p>Admin and student sign-in now share one page. <a href="login.html">Continue to Sign In</a></p>
+</body>
 </html>

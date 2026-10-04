@@ -304,18 +304,10 @@ function setTheme(theme) {
 }
 
 function initTheme() {
-    const savedTheme = localStorage.getItem("synapse_theme");
+    // The home page loads dark unless the reader explicitly chose light.
+    const savedTheme = localStorage.getItem("synapse_theme") || "dark";
 
-    if (savedTheme) {
-        setTheme(savedTheme);
-        return;
-    }
-
-    const prefersDark =
-        window.matchMedia &&
-        window.matchMedia("(prefers-color-scheme: dark)").matches;
-
-    setTheme(prefersDark ? "dark" : "light");
+    setTheme(savedTheme);
 }
 
 themeToggleBtn?.addEventListener("click", () => {

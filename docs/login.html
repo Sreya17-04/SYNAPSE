@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SYNAPSE – Student Login</title>
+    <title>SYNAPSE â€“ Sign In</title>
     <meta name="theme-color" content="#4f46e5">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -46,21 +46,22 @@
 
             <span class="form-eyebrow">
                 <svg class="icon" aria-hidden="true"><use href="#i-shield"></use></svg>
-                Student access
+                Secure access
             </span>
-            <h2>Student Login</h2>
+            <h2>Sign in</h2>
+            <p>Students sign in with their registration number, admins with their email.</p>
 
             <div class="alert-msg alert-error" id="alert-error" role="alert" aria-live="assertive"></div>
             <div class="alert-msg alert-success" id="alert-success" role="alert" aria-live="assertive"></div>
 
             <form id="login-form">
                 <div class="form-group">
-                    <label for="username">University Registration Number</label>
+                    <label for="username">Registration Number or Email</label>
                     <input type="text" id="username" required
-                        autocomplete="username" autocapitalize="characters" spellcheck="false">
+                        autocomplete="username" autocapitalize="off" spellcheck="false">
                 </div>
                 <div class="form-group">
-                    <label for="password">Roll Number</label>
+                    <label for="password">Password</label>
                     <input type="password" id="password" required
                         autocomplete="current-password">
                 </div>
@@ -69,14 +70,6 @@
                     <svg class="icon" aria-hidden="true"><use href="#i-arrow"></use></svg>
                 </button>
             </form>
-
-            <div class="admin-link-box">
-                Admin?
-                <a href="admin-login.html">
-                    Admin Login
-                    <svg class="icon" aria-hidden="true"><use href="#i-arrow"></use></svg>
-                </a>
-            </div>
         </main>
     </div>
 
