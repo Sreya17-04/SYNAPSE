@@ -4,23 +4,52 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SYNAPSE – Registration Closed</title>
+    <meta name="theme-color" content="#4f46e5">
     <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@600;700;800&display=swap">
     <link rel="stylesheet" href="auth.css">
     </head>
 <body>
+    <svg xmlns="http://www.w3.org/2000/svg" class="icon-sprite" hidden aria-hidden="true" focusable="false">
+        <symbol id="i-check" viewBox="0 0 24 24">
+            <path d="m5.5 12.6 4.4 4.4L18.5 8.4"></path>
+        </symbol>
+        <symbol id="i-arrow" viewBox="0 0 24 24">
+            <path d="M5 12h13"></path>
+            <path d="m13 7 5 5-5 5"></path>
+        </symbol>
+        <symbol id="i-lock" viewBox="0 0 24 24">
+            <rect x="4.6" y="10.4" width="14.8" height="10.2" rx="2.4"></rect>
+            <path d="M8.4 10.4V7.8a3.6 3.6 0 0 1 7.2 0v2.6"></path>
+        </symbol>
+    </svg>
+
     <div class="auth-page">
         <!-- Left Branding -->
         <div class="brand-panel">
+            <span class="brand-orb" aria-hidden="true"></span>
             <div class="brand-content">
                 <div class="brand-logo">S</div>
                 <div class="brand-name">SYNAPSE</div>
                 <div class="brand-tagline">Department Community Platform</div>
                 <div class="brand-features">
-                    <div class="brand-feature">📚 Share academic notes & resources</div>
-                    <div class="brand-feature">💼 Discover placement & internship tips</div>
-                    <div class="brand-feature">💬 Connect and collaborate with peers</div>
-                    <div class="brand-feature">📢 Stay updated with announcements</div>
+                    <div class="brand-feature">
+                        <span class="feature-check"><svg class="icon" aria-hidden="true"><use href="#i-check"></use></svg></span>
+                        Share academic notes &amp; resources
+                    </div>
+                    <div class="brand-feature">
+                        <span class="feature-check"><svg class="icon" aria-hidden="true"><use href="#i-check"></use></svg></span>
+                        Discover placement &amp; internship tips
+                    </div>
+                    <div class="brand-feature">
+                        <span class="feature-check"><svg class="icon" aria-hidden="true"><use href="#i-check"></use></svg></span>
+                        Connect and collaborate with peers
+                    </div>
+                    <div class="brand-feature">
+                        <span class="feature-check"><svg class="icon" aria-hidden="true"><use href="#i-check"></use></svg></span>
+                        Stay updated with announcements
+                    </div>
                 </div>
             </div>
         </div>
@@ -28,6 +57,10 @@
         <!-- Right panel: registration is no longer available -->
         <div class="form-panel">
             <div class="form-box">
+                <span class="form-eyebrow">
+                    <svg class="icon" aria-hidden="true"><use href="#i-lock"></use></svg>
+                    Invite only
+                </span>
                 <h2>Registration is closed</h2>
                 <p>
                     Student accounts are created by the department from the official
@@ -36,12 +69,21 @@
                     Roll Number.
                 </p>
 
+                <a class="btn-submit" href="login.html">
+                    Go to Student Login
+                    <svg class="icon" aria-hidden="true"><use href="#i-arrow"></use></svg>
+                </a>
+
                 <div class="form-footer">
-                    <a href="login.html">Go to Student Login</a>
+                    Already have an account? <a href="login.html">Sign in instead</a>
                 </div>
 
                 <div class="admin-link-box">
-                    Admin? <a href="admin-login.html">→ Admin Login</a>
+                    Admin?
+                    <a href="admin-login.html">
+                        Admin Login
+                        <svg class="icon" aria-hidden="true"><use href="#i-arrow"></use></svg>
+                    </a>
                 </div>
             </div>
         </div>

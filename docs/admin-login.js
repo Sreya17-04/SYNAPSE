@@ -9,6 +9,10 @@
         window.location.replace("admin.html");
     }
 
+    // Restored after a failed attempt; textContent wipes the inline icon.
+    const SUBMIT_LABEL =
+        'Access Admin Panel <svg class="icon" aria-hidden="true"><use href="#i-arrow"></use></svg>';
+
     document
         .getElementById("admin-login-form")
         .addEventListener("submit", async (event) => {
@@ -49,7 +53,7 @@
             } catch (error) {
                 window.Auth.showAlert("error", error.message);
                 submitBtn.disabled = false;
-                submitBtn.textContent = "Access Admin Panel";
+                submitBtn.innerHTML = SUBMIT_LABEL;
             }
         });
 })();

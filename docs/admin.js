@@ -252,9 +252,9 @@ function showToast(message, type = "info") {
     }
 
     const icons = {
-        success: "✅",
-        error: "⚠️",
-        info: "ℹ️"
+        success: '<svg class="icon" aria-hidden="true"><use href="#i-check"></use></svg>',
+        error: '<svg class="icon" aria-hidden="true"><use href="#i-x"></use></svg>',
+        info: '<svg class="icon" aria-hidden="true"><use href="#i-info"></use></svg>'
     };
 
     const toast = document.createElement("div");
@@ -262,7 +262,7 @@ function showToast(message, type = "info") {
     toast.className = `toast ${type}`;
 
     toast.innerHTML = `
-        <span>${icons[type] || "ℹ️"}</span>
+        <span class="toast-icon">${icons[type] || icons.info}</span>
         <div>${escapeHTML(message)}</div>
     `;
 
@@ -285,20 +285,12 @@ function initTheme() {
     const savedTheme =
         localStorage.getItem("synapse_theme") || "light";
 
-    const icon = get("theme-icon");
-
+    // The sun/moon glyphs live in the markup and are swapped by CSS from the
+    // body class, so nothing here has to rewrite the button contents.
     if (savedTheme === "dark") {
         document.body.classList.add("dark-mode");
-
-        if (icon) {
-            icon.textContent = "☀️";
-        }
     } else {
         document.body.classList.remove("dark-mode");
-
-        if (icon) {
-            icon.textContent = "🌙";
-        }
     }
 }
 
@@ -319,24 +311,12 @@ function setupThemeToggle() {
                 "synapse_theme",
                 "light"
             );
-
-            const icon = get("theme-icon");
-
-            if (icon) {
-                icon.textContent = "🌙";
-            }
         } else {
             document.body.classList.add("dark-mode");
             localStorage.setItem(
                 "synapse_theme",
                 "dark"
             );
-
-            const icon = get("theme-icon");
-
-            if (icon) {
-                icon.textContent = "☀️";
-            }
         }
     });
 }
@@ -1603,7 +1583,7 @@ function renderFlaggedTable() {
             <tr>
                 <td colspan="4"
                     class="table-empty">
-                    No flagged posts. Community looks clean! ✅
+                    No flagged posts. Community looks clean!
                 </td>
             </tr>
         `;

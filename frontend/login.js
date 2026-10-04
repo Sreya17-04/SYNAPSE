@@ -12,6 +12,10 @@
 
     window.Auth.redirectIfLoggedIn();
 
+    // Restored after a failed attempt; textContent wipes the inline icon.
+    const SUBMIT_LABEL =
+        'Sign In <svg class="icon" aria-hidden="true"><use href="#i-arrow"></use></svg>';
+
     document
         .getElementById("login-form")
         .addEventListener("submit", async (event) => {
@@ -52,7 +56,7 @@
             } catch (error) {
                 window.Auth.showAlert("error", error.message);
                 submitBtn.disabled = false;
-                submitBtn.textContent = "Sign In";
+                submitBtn.innerHTML = SUBMIT_LABEL;
             }
         });
 })();

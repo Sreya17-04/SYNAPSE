@@ -4,23 +4,52 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SYNAPSE – Student Login</title>
+    <meta name="theme-color" content="#4f46e5">
     <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@600;700;800&display=swap">
     <link rel="stylesheet" href="auth.css">
     </head>
 <body>
+    <svg xmlns="http://www.w3.org/2000/svg" class="icon-sprite" hidden aria-hidden="true" focusable="false">
+        <symbol id="i-check" viewBox="0 0 24 24">
+            <path d="m5.5 12.6 4.4 4.4L18.5 8.4"></path>
+        </symbol>
+        <symbol id="i-arrow" viewBox="0 0 24 24">
+            <path d="M5 12h13"></path>
+            <path d="m13 7 5 5-5 5"></path>
+        </symbol>
+        <symbol id="i-shield" viewBox="0 0 24 24">
+            <path d="M12 3.2 5 6v5.6c0 4.2 2.9 7.6 7 9.2 4.1-1.6 7-5 7-9.2V6l-7-2.8Z"></path>
+            <path d="m9.2 12.2 2 2 3.6-3.8"></path>
+        </symbol>
+    </svg>
+
     <div class="auth-page">
         <!-- Left Branding -->
         <div class="brand-panel">
+            <span class="brand-orb" aria-hidden="true"></span>
             <div class="brand-content">
                 <div class="brand-logo">S</div>
                 <div class="brand-name">SYNAPSE</div>
                 <div class="brand-tagline">Department Community Platform</div>
                 <div class="brand-features">
-                    <div class="brand-feature">📚 Share academic notes & resources</div>
-                    <div class="brand-feature">💼 Discover placement & internship tips</div>
-                    <div class="brand-feature">💬 Connect and collaborate with peers</div>
-                    <div class="brand-feature">📢 Stay updated with announcements</div>
+                    <div class="brand-feature">
+                        <span class="feature-check"><svg class="icon" aria-hidden="true"><use href="#i-check"></use></svg></span>
+                        Share academic notes &amp; resources
+                    </div>
+                    <div class="brand-feature">
+                        <span class="feature-check"><svg class="icon" aria-hidden="true"><use href="#i-check"></use></svg></span>
+                        Discover placement &amp; internship tips
+                    </div>
+                    <div class="brand-feature">
+                        <span class="feature-check"><svg class="icon" aria-hidden="true"><use href="#i-check"></use></svg></span>
+                        Connect and collaborate with peers
+                    </div>
+                    <div class="brand-feature">
+                        <span class="feature-check"><svg class="icon" aria-hidden="true"><use href="#i-check"></use></svg></span>
+                        Stay updated with announcements
+                    </div>
                 </div>
             </div>
         </div>
@@ -28,6 +57,10 @@
         <!-- Right Login Form -->
         <div class="form-panel">
             <div class="form-box">
+                <span class="form-eyebrow">
+                    <svg class="icon" aria-hidden="true"><use href="#i-shield"></use></svg>
+                    Student access
+                </span>
                 <h2>Student Login</h2>
                 <p>Welcome back! Sign in to your SYNAPSE account.</p>
 
@@ -38,18 +71,26 @@
                     <div class="form-group">
                         <label for="username">University Registration Number</label>
                         <input type="text" id="username" required
-                            autocomplete="username" autocapitalize="characters" spellcheck="false">
+                            autocomplete="username" autocapitalize="characters" spellcheck="false"
+                            placeholder="TKM24CS027">
                     </div>
                     <div class="form-group">
                         <label for="password">Roll Number</label>
                         <input type="password" id="password" required
-                            autocomplete="current-password">
+                            autocomplete="current-password" placeholder="Your roll number">
                     </div>
-                    <button type="submit" class="btn-submit" id="submit-btn">Sign In</button>
+                    <button type="submit" class="btn-submit" id="submit-btn">
+                        Sign In
+                        <svg class="icon" aria-hidden="true"><use href="#i-arrow"></use></svg>
+                    </button>
                 </form>
 
                 <div class="admin-link-box">
-                    Admin? <a href="admin-login.html">→ Admin Login</a>
+                    Admin?
+                    <a href="admin-login.html">
+                        Admin Login
+                        <svg class="icon" aria-hidden="true"><use href="#i-arrow"></use></svg>
+                    </a>
                 </div>
             </div>
         </div>

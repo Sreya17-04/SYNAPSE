@@ -199,19 +199,23 @@ function getInitials(name) {
     return String(name).slice(0, 2).toUpperCase();
 }
 
-function getCategoryIcon(category) {
-    const icons = {
-        Academic: "📚",
-        Placement: "💼",
-        Events: "📢",
-        General: "🌐",
-        Internships: "🚀",
-        Projects: "💻",
-        Other: "📌"
-    };
-
-    return icons[category] || "💬";
+// Categories are rendered as a colour-coded chip; the slug picks the palette.
+function getCategorySlug(category) {
+    return String(category || "other")
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "") || "other";
 }
+
+// Line icons come from the sprite declared at the top of index.html.
+const ICONS = {
+    heart: '<svg class="icon" aria-hidden="true"><use href="#i-heart"></use></svg>',
+    comment: '<svg class="icon" aria-hidden="true"><use href="#i-chat"></use></svg>',
+    share: '<svg class="icon" aria-hidden="true"><use href="#i-share"></use></svg>',
+    bookmark: '<svg class="icon" aria-hidden="true"><use href="#i-bookmark"></use></svg>',
+    flag: '<svg class="icon" aria-hidden="true"><use href="#i-flag"></use></svg>',
+    trash: '<svg class="icon" aria-hidden="true"><use href="#i-trash"></use></svg>'
+};
 
 function timeAgo(dateString) {
     if (!dateString) return "Recently";
@@ -252,13 +256,13 @@ function showToast(message, type = "info") {
     toast.className = `toast ${type}`;
 
     const icons = {
-        success: "✅",
-        error: "⚠️",
-        info: "ℹ️"
+        success: '<svg class="icon" aria-hidden="true"><use href="#i-check"></use></svg>',
+        error: '<svg class="icon" aria-hidden="true"><use href="#i-x"></use></svg>',
+        info: '<svg class="icon" aria-hidden="true"><use href="#i-info"></use></svg>'
     };
 
     toast.innerHTML = `
-        <span>${icons[type] || "ℹ️"}</span>
+        <span class="toast-icon">${icons[type] || icons.info}</span>
         <div>${escapeHTML(message)}</div>
     `;
 
@@ -279,21 +283,13 @@ function showToast(message, type = "info") {
 // =====================================================
 
 function setTheme(theme) {
+    // The sun/moon glyphs are both in the DOM and swapped by CSS from the
+    // body class, so nothing here has to rewrite markup.
     if (theme === "dark") {
         document.body.classList.add("dark-mode");
-
-        if (themeIcon) {
-            themeIcon.textContent = "☀️";
-        }
-
         localStorage.setItem("synapse_theme", "dark");
     } else {
         document.body.classList.remove("dark-mode");
-
-        if (themeIcon) {
-            themeIcon.textContent = "🌙";
-        }
-
         localStorage.setItem("synapse_theme", "light");
     }
 }
@@ -320,6 +316,18 @@ themeToggleBtn?.addEventListener("click", () => {
 });
 
 initTheme();
+
+// The header only picks up a shadow once content has scrolled under it.
+const navbarEl = document.querySelector(".navbar");
+
+if (navbarEl) {
+    const syncNavbarShadow = () => {
+        navbarEl.classList.toggle("is-scrolled", window.scrollY > 8);
+    };
+
+    syncNavbarShadow();
+    window.addEventListener("scroll", syncNavbarShadow, { passive: true });
+}
 
 // =====================================================
 // USER PROFILE
@@ -476,14 +484,16 @@ async function loadPosts() {
 
         postsContainer.innerHTML = `
             <div class="empty-state">
-                <div class="empty-icon">⚠️</div>
+                <div class="empty-icon">
+                    <svg class="icon" aria-hidden="true"><use href="#i-alert"></use></svg>
+                </div>
                 <h3>Unable to Load Posts</h3>
                 <p>
                     Could not reach the SYNAPSE API. Check that the
                     backend is running and reload.
                 </p>
                 <button
-                    class="btn-hero-primary mt-1"
+                    class="btn-create-post-banner mt-1"
                     id="retry-posts-btn"
                     type="button"
                 >
@@ -718,7 +728,9 @@ function displayPosts() {    if (!postsContainer) return;
 
         postsContainer.innerHTML = `
             <div class="empty-state">
-                <div class="empty-icon">📭</div>
+                <div class="empty-icon">
+                    <svg class="icon" aria-hidden="true"><use href="#i-inbox"></use></svg>
+                </div>
                 <h3>${title}</h3>
                 <p>${message}</p>
 
@@ -727,7 +739,8 @@ function displayPosts() {    if (!postsContainer) return;
                     id="empty-create-btn"
                     type="button"
                 >
-                    + Create Post
+                    <svg class="icon" aria-hidden="true"><use href="#i-plus"></use></svg>
+                    Create Post
                 </button>
             </div>
         `;
@@ -785,8 +798,8 @@ function renderPostCard(post, savedIds) {
 
             <div class="post-header-right">
 
-                <span class="category-tag">
-                    ${getCategoryIcon(post.category)}
+                <span class="category-tag cat-${getCategorySlug(post.category)}">
+                    <span class="cat-dot"></span>
                     ${escapeHTML(post.category)}
                 </span>
 
@@ -799,7 +812,7 @@ function renderPostCard(post, savedIds) {
                                 title="Delete post"
                                 aria-label="Delete your post ${escapeHTML(post.title)}"
                             >
-                                🗑️
+                                ${ICONS.trash}
                             </button>
                         `
             : ""
@@ -827,7 +840,7 @@ function renderPostCard(post, savedIds) {
                     aria-label="Like this post"
                     aria-pressed="false"
                 >
-                    👍
+                    ${ICONS.heart}
                     <span class="like-count">
                         ${likeCount}
                     </span>
@@ -840,7 +853,7 @@ function renderPostCard(post, savedIds) {
                     aria-label="Show ${commentCount} comments"
                     aria-expanded="false"
                 >
-                    💬
+                    ${ICONS.comment}
                     <span>
                         ${commentCount}
                     </span>
@@ -855,7 +868,7 @@ function renderPostCard(post, savedIds) {
                     type="button"
                     aria-label="Share this post"
                 >
-                    🔗 Share
+                    ${ICONS.share} Share
                 </button>
 
                 <button
@@ -865,7 +878,7 @@ function renderPostCard(post, savedIds) {
                     aria-pressed="${isSaved ? "true" : "false"}"
                     aria-label="${isSaved ? "Remove from saved posts" : "Save this post"}"
                 >
-                    🔖 ${isSaved ? "Saved" : "Save"}
+                    ${ICONS.bookmark} ${isSaved ? "Saved" : "Save"}
                 </button>
 
                 ${canReportPost(post) ? reportButtonHTML(post) : ""}
@@ -1070,7 +1083,7 @@ async function toggleLike(postId, button) {
         if (data.liked) {
             button.classList.add("liked");
             button.innerHTML = `
-                ❤️
+                ${ICONS.heart}
                 <span class="like-count">
                     ${escapeHTML(data.likes)}
                 </span>
@@ -1078,7 +1091,7 @@ async function toggleLike(postId, button) {
         } else {
             button.classList.remove("liked");
             button.innerHTML = `
-                👍
+                ${ICONS.heart}
                 <span class="like-count">
                     ${escapeHTML(data.likes)}
                 </span>
@@ -1198,7 +1211,7 @@ async function submitComment(postId, card) {
 
             if (commentButton) {
                 commentButton.innerHTML = `
-                    💬
+                    ${ICONS.comment}
                     <span>
                         ${post.comments.length}
                     </span>
@@ -1393,7 +1406,7 @@ function reportButtonHTML(post) {
                 title="You have already reported this post"
                 aria-label="You have already reported this post"
             >
-                🚩 Reported
+                ${ICONS.flag} Reported
             </button>
         `;
     }
@@ -1406,7 +1419,7 @@ function reportButtonHTML(post) {
             title="Report this post"
             aria-label="Report this post"
         >
-            🚩 Report
+            ${ICONS.flag} Report
         </button>
     `;
 }

@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SYNAPSE – Admin Moderation Panel</title>
+    <meta name="theme-color" content="#0a0d17">
     <!-- admin.css already @imports style.css, so linking both loaded the
          entire design system twice and blocked first paint on the @import. -->
     <link rel="stylesheet" href="admin.css">
@@ -12,8 +13,82 @@
 
 <body class="admin-body">
 
+    <!-- ================= ICON SPRITE ================= -->
+    <svg xmlns="http://www.w3.org/2000/svg" class="icon-sprite" hidden aria-hidden="true" focusable="false">
+        <symbol id="i-grid" viewBox="0 0 24 24">
+            <rect x="3.4" y="3.4" width="7.2" height="7.2" rx="1.8"></rect>
+            <rect x="13.4" y="3.4" width="7.2" height="7.2" rx="1.8"></rect>
+            <rect x="3.4" y="13.4" width="7.2" height="7.2" rx="1.8"></rect>
+            <rect x="13.4" y="13.4" width="7.2" height="7.2" rx="1.8"></rect>
+        </symbol>
+        <symbol id="i-doc" viewBox="0 0 24 24">
+            <path d="M14 3.2H7.4a2 2 0 0 0-2 2v13.6a2 2 0 0 0 2 2h9.2a2 2 0 0 0 2-2V8.2L14 3.2Z"></path>
+            <path d="M13.8 3.4V8.4h5"></path>
+            <path d="M8.8 13h6.4M8.8 16.6h4.2"></path>
+        </symbol>
+        <symbol id="i-megaphone" viewBox="0 0 24 24">
+            <path d="M4 10.4v2.8a1.8 1.8 0 0 0 1.8 1.8h1.4l8.8 4.6V5.4L7.2 10H5.8A1.8 1.8 0 0 0 4 11.8Z"></path>
+            <path d="M18 9.2a3.6 3.6 0 0 1 0 5.2"></path>
+            <path d="M7.6 15.2 8.8 20"></path>
+        </symbol>
+        <symbol id="i-users" viewBox="0 0 24 24">
+            <circle cx="9.2" cy="8.4" r="3.6"></circle>
+            <path d="M2.8 20a6.4 6.4 0 0 1 12.8 0"></path>
+            <path d="M16.2 5.4a3.6 3.6 0 0 1 0 6"></path>
+            <path d="M18.4 14.6a6.4 6.4 0 0 1 3 5.4"></path>
+        </symbol>
+        <symbol id="i-alert" viewBox="0 0 24 24">
+            <path d="M10.4 4.4 2.9 17.6a1.9 1.9 0 0 0 1.7 2.8h14.8a1.9 1.9 0 0 0 1.7-2.8L13.6 4.4a1.9 1.9 0 0 0-3.2 0Z"></path>
+            <path d="M12 9.6v4.2"></path>
+            <circle cx="12" cy="16.6" r=".7" fill="currentColor" stroke="none"></circle>
+        </symbol>
+        <symbol id="i-flag" viewBox="0 0 24 24">
+            <path d="M5.4 21V4.2"></path>
+            <path d="M5.4 5.2h11.2l-2.1 3.6 2.1 3.6H5.4"></path>
+        </symbol>
+        <symbol id="i-chat" viewBox="0 0 24 24">
+            <path d="M20.5 11.8a7.7 7.7 0 0 1-7.7 7.7H8.2L3.5 22.5l1.3-4.4a7.7 7.7 0 0 1 3-12.4 7.7 7.7 0 0 1 12.7 6.1Z"></path>
+        </symbol>
+        <symbol id="i-refresh" viewBox="0 0 24 24">
+            <path d="M20 12a8 8 0 1 1-2.6-5.9"></path>
+            <path d="M20.2 4.4v4.4h-4.4"></path>
+        </symbol>
+        <symbol id="i-sun" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="4"></circle>
+            <path d="M12 2.5v2M12 19.5v2M4.6 4.6 6 6M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4"></path>
+        </symbol>
+        <symbol id="i-moon" viewBox="0 0 24 24">
+            <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"></path>
+        </symbol>
+        <symbol id="i-arrow" viewBox="0 0 24 24">
+            <path d="M5 12h13"></path>
+            <path d="m13 7 5 5-5 5"></path>
+        </symbol>
+        <symbol id="i-home" viewBox="0 0 24 24">
+            <path d="M3 10.6 12 3.2l9 7.4"></path>
+            <path d="M5.4 9.6V20.4h13.2V9.6"></path>
+            <path d="M9.6 20.4v-6h4.8v6"></path>
+        </symbol>
+        <symbol id="i-logout" viewBox="0 0 24 24">
+            <path d="M14.6 4.4h3a2 2 0 0 1 2 2v11.2a2 2 0 0 1-2 2h-3"></path>
+            <path d="m9.8 8.2-3.8 3.8 3.8 3.8"></path>
+            <path d="M6.4 12h8.4"></path>
+        </symbol>
+        <symbol id="i-check" viewBox="0 0 24 24">
+            <path d="m5.5 12.6 4.4 4.4L18.5 8.4"></path>
+        </symbol>
+        <symbol id="i-x" viewBox="0 0 24 24">
+            <path d="m6.6 6.6 10.8 10.8M17.4 6.6 6.6 17.4"></path>
+        </symbol>
+        <symbol id="i-info" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="8.8"></circle>
+            <path d="M12 11.2v5"></path>
+            <circle cx="12" cy="7.9" r=".7" fill="currentColor" stroke="none"></circle>
+        </symbol>
+    </svg>
+
     <!-- ================= ADMIN NAVBAR ================= -->
-    <header class="navbar">
+    <header class="navbar admin-navbar">
         <div class="logo">
             <div class="logo-badge logo-badge-gradient">S</div>
             <div class="logo-text-container">
@@ -23,12 +98,19 @@
         </div>
 
         <nav class="nav-links">
-            <a href="index.html" class="nav-link">← Back to Community</a>
+            <a href="index.html" class="nav-link">
+                <svg class="icon" aria-hidden="true"><use href="#i-home"></use></svg>
+                Back to Community
+            </a>
         </nav>
 
         <div class="nav-right">
-            <button class="icon-btn" id="theme-toggle" type="button" aria-label="Toggle dark/light mode">
-                <span id="theme-icon">🌙</span>
+            <button class="icon-btn" id="theme-toggle" type="button" aria-label="Toggle dark/light mode"
+                title="Toggle Light/Dark Mode">
+                <span id="theme-icon">
+                    <svg class="icon icon-moon" aria-hidden="true"><use href="#i-moon"></use></svg>
+                    <svg class="icon icon-sun" aria-hidden="true"><use href="#i-sun"></use></svg>
+                </span>
             </button>
 
             <div class="profile-menu-container">
@@ -41,8 +123,12 @@
                         <strong id="admin-name">Admin</strong>
                         <span id="admin-email">admin@synapse.edu</span>
                     </div>
-                    <a href="index.html" class="dropdown-item">🏠 Community Feed</a>
-                    <button class="dropdown-item" id="admin-logout-btn" type="button">🚪 Logout</button>
+                    <a href="index.html" class="dropdown-item">
+                        <svg class="icon" aria-hidden="true"><use href="#i-home"></use></svg> Community Feed
+                    </a>
+                    <button class="dropdown-item" id="admin-logout-btn" type="button">
+                        <svg class="icon" aria-hidden="true"><use href="#i-logout"></use></svg> Logout
+                    </button>
                 </div>
             </div>
         </div>
@@ -52,29 +138,36 @@
     <div class="admin-layout">
         <!-- SIDEBAR -->
         <aside class="admin-sidebar" role="tablist" aria-orientation="vertical" aria-label="Admin sections">
+            <span class="admin-nav-label">Moderation</span>
             <button class="admin-nav-item active" id="tab-dashboard" data-tab="dashboard" type="button"
                 role="tab" aria-selected="true" aria-controls="panel-dashboard" tabindex="0">
-                <span>📊</span> Dashboard
+                <span class="admin-nav-icon"><svg class="icon" aria-hidden="true"><use href="#i-grid"></use></svg></span>
+                Dashboard
             </button>
             <button class="admin-nav-item" id="tab-posts" data-tab="posts" type="button"
                 role="tab" aria-selected="false" aria-controls="panel-posts" tabindex="-1">
-                <span>📝</span> Posts
+                <span class="admin-nav-icon"><svg class="icon" aria-hidden="true"><use href="#i-doc"></use></svg></span>
+                Posts
             </button>
             <button class="admin-nav-item" id="tab-announcements" data-tab="announcements" type="button"
                 role="tab" aria-selected="false" aria-controls="panel-announcements" tabindex="-1">
-                <span>📢</span> Announcements
+                <span class="admin-nav-icon"><svg class="icon" aria-hidden="true"><use href="#i-megaphone"></use></svg></span>
+                Announcements
             </button>
             <button class="admin-nav-item" id="tab-users" data-tab="users" type="button"
                 role="tab" aria-selected="false" aria-controls="panel-users" tabindex="-1">
-                <span>👥</span> Users
+                <span class="admin-nav-icon"><svg class="icon" aria-hidden="true"><use href="#i-users"></use></svg></span>
+                Users
             </button>
             <button class="admin-nav-item" id="tab-flagged" data-tab="flagged" type="button"
                 role="tab" aria-selected="false" aria-controls="panel-flagged" tabindex="-1">
-                <span>⚠️</span> Flagged (<span id="flagged-count">0</span>)
+                <span class="admin-nav-icon warn"><svg class="icon" aria-hidden="true"><use href="#i-alert"></use></svg></span>
+                <span class="admin-nav-text">Flagged (<span id="flagged-count">0</span>)</span>
             </button>
             <button class="admin-nav-item" id="tab-reports" data-tab="reports" type="button"
                 role="tab" aria-selected="false" aria-controls="panel-reports" tabindex="-1">
-                <span>🚩</span> Reports
+                <span class="admin-nav-icon danger"><svg class="icon" aria-hidden="true"><use href="#i-flag"></use></svg></span>
+                Reports
             </button>
         </aside>
 
@@ -84,6 +177,7 @@
             <!-- ===== DASHBOARD TAB ===== -->
             <div id="panel-dashboard" class="admin-panel active-panel" role="tabpanel" aria-labelledby="tab-dashboard" tabindex="0">
                 <div class="admin-header-title">
+                    <span class="admin-eyebrow">Overview</span>
                     <h1>Community Overview</h1>
                     <p>Manage discussions, moderate content, and monitor community health.</p>
                 </div>
@@ -94,28 +188,28 @@
                             <h4>Registered Students</h4>
                             <div class="stat-value" id="stat-total-users">—</div>
                         </div>
-                        <div class="stat-icon-wrapper">👥</div>
+                        <div class="stat-icon-wrapper"><svg class="icon" aria-hidden="true"><use href="#i-users"></use></svg></div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-info">
                             <h4>Total Posts</h4>
                             <div class="stat-value" id="stat-total-posts">—</div>
                         </div>
-                        <div class="stat-icon-wrapper">📝</div>
+                        <div class="stat-icon-wrapper violet"><svg class="icon" aria-hidden="true"><use href="#i-doc"></use></svg></div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-info">
                             <h4>Pending Reports</h4>
                             <div class="stat-value stat-pending" id="stat-pending-reports">—</div>
                         </div>
-                        <div class="stat-icon-wrapper stat-icon-warning">⚠️</div>
+                        <div class="stat-icon-wrapper stat-icon-warning"><svg class="icon" aria-hidden="true"><use href="#i-flag"></use></svg></div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-info">
                             <h4>Active Discussions</h4>
                             <div class="stat-value" id="stat-active">—</div>
                         </div>
-                        <div class="stat-icon-wrapper">💬</div>
+                        <div class="stat-icon-wrapper mint"><svg class="icon" aria-hidden="true"><use href="#i-chat"></use></svg></div>
                     </div>
                 </div>
 
@@ -123,7 +217,10 @@
                 <div class="table-card">
                     <div class="table-card-header">
                         <h2>Recent Posts</h2>
-                        <button class="btn-create-post-banner" id="refresh-btn" type="button">🔄 Refresh</button>
+                        <button class="btn-create-post-banner" id="refresh-btn" type="button">
+                            <svg class="icon" aria-hidden="true"><use href="#i-refresh"></use></svg>
+                            Refresh
+                        </button>
                     </div>
                     <div id="dashboard-posts-preview"></div>
                 </div>
@@ -132,6 +229,7 @@
             <!-- ===== POSTS TAB ===== -->
             <div id="panel-posts" class="admin-panel panel-hidden" role="tabpanel" aria-labelledby="tab-posts" tabindex="0">
                 <div class="admin-header-title">
+                    <span class="admin-eyebrow">Moderation</span>
                     <h1>Posts Management</h1>
                     <p>Review, moderate and delete community posts.</p>
                 </div>
@@ -162,6 +260,7 @@
             <!-- ===== ANNOUNCEMENTS TAB ===== -->
             <div id="panel-announcements" class="admin-panel panel-hidden" role="tabpanel" aria-labelledby="tab-announcements" tabindex="0">
                 <div class="admin-header-title">
+                    <span class="admin-eyebrow">Publishing</span>
                     <h1>Announcements</h1>
                     <p>Publish updates that appear in the community sidebar.</p>
                 </div>
@@ -173,12 +272,17 @@
                         </div>
                         <form id="announcement-form" class="announcement-form">
                             <label for="announcement-title">Title</label>
-                            <input id="announcement-title" type="text" maxlength="120" required>
+                            <input id="announcement-title" type="text" maxlength="120" required
+                                placeholder="e.g. Mid-semester exam timetable">
 
                             <label for="announcement-message">Message</label>
-                            <textarea id="announcement-message" maxlength="500" rows="5" required></textarea>
+                            <textarea id="announcement-message" maxlength="500" rows="5" required
+                                placeholder="Write the announcement students will see..."></textarea>
 
-                            <button class="btn-create-post-banner" type="submit">Publish Announcement</button>
+                            <button class="btn-create-post-banner" type="submit">
+                                <svg class="icon" aria-hidden="true"><use href="#i-megaphone"></use></svg>
+                                Publish Announcement
+                            </button>
                         </form>
                     </div>
 
@@ -205,6 +309,7 @@
             <!-- ===== USERS TAB ===== -->
             <div id="panel-users" class="admin-panel panel-hidden" role="tabpanel" aria-labelledby="tab-users" tabindex="0">
                 <div class="admin-header-title">
+                    <span class="admin-eyebrow">Accounts</span>
                     <h1>User Management</h1>
                     <p>View and manage all registered students.</p>
                 </div>
@@ -233,6 +338,7 @@
             <!-- ===== FLAGGED TAB ===== -->
             <div id="panel-flagged" class="admin-panel panel-hidden" role="tabpanel" aria-labelledby="tab-flagged" tabindex="0">
                 <div class="admin-header-title">
+                    <span class="admin-eyebrow">Review queue</span>
                     <h1>Flagged Content</h1>
                     <p>Posts that have been flagged for moderation review.</p>
                 </div>
@@ -256,13 +362,17 @@
             <!-- ===== REPORTS TAB ===== -->
             <div id="panel-reports" class="admin-panel panel-hidden" role="tabpanel" aria-labelledby="tab-reports" tabindex="0">
                 <div class="admin-header-title">
+                    <span class="admin-eyebrow">Review queue</span>
                     <h1>Reports</h1>
                     <p>Posts reported by students, awaiting moderation review.</p>
                 </div>
                 <div class="table-card">
                     <div class="table-card-header">
                         <h2>All Reports</h2>
-                        <button class="btn-create-post-banner" id="reports-refresh-btn" type="button">🔄 Refresh</button>
+                        <button class="btn-create-post-banner" id="reports-refresh-btn" type="button">
+                            <svg class="icon" aria-hidden="true"><use href="#i-refresh"></use></svg>
+                            Refresh
+                        </button>
                     </div>
                     <div class="table-scroll">
                         <table class="admin-table">
