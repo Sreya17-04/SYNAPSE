@@ -60,18 +60,21 @@ function requireStudentSession(options = {}) {
 // Admins reach this page from the dashboard and get a read-only copy of the
 // student feed: every composer entry point is removed, and the profile menu
 // gains an "Admin Dashboard" shortcut back to the moderation panel.
-function applyViewerRoleUI() {
-    const isAdmin =
+//
+// The shortcut is gated on `serverConfirmed`: localStorage is writable by any
+// script, so the admin-only link is revealed only after /api/auth/me has
+// agreed the session really is an admin. Students never see it - it ships
+// hidden and is only un-hidden for a server-verified admin.
+function applyViewerRoleUI(serverConfirmed = false) {
+    const cachedAdmin =
         userRole === "admin" ||
         currentUser?.role === "admin";
 
-    if (!isAdmin) {
-        return;
-    }
+    const isAdmin = serverConfirmed && cachedAdmin;
 
     [createPostBtn, heroCreateBtn, quickPostTrigger].forEach((element) => {
         if (element) {
-            element.style.display = isAdmin ? "none" : "";
+            element.style.display = cachedAdmin ? "none" : "";
         }
     });
 
@@ -2175,7 +2178,9 @@ postForm?.addEventListener(
         );
         localStorage.setItem("synapse_role", userRole);
 
-        applyViewerRoleUI();
+        // Only now is the role server-verified, so only now may the
+        // admin-only "Admin Dashboard" shortcut appear.
+        applyViewerRoleUI(true);
 
     } catch (error) {
         if (error.message.startsWith("Session expired")) {
