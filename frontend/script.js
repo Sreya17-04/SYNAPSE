@@ -57,6 +57,32 @@ function requireStudentSession(options = {}) {
     return true;
 }
 
+// Admins reach this page from the dashboard and get a read-only copy of the
+// student feed: every composer entry point is removed, and the profile menu
+// gains an "Admin Dashboard" shortcut back to the moderation panel.
+function applyViewerRoleUI() {
+    const isAdmin =
+        userRole === "admin" ||
+        currentUser?.role === "admin";
+
+    if (!isAdmin) {
+        return;
+    }
+
+    [createPostBtn, heroCreateBtn, quickPostTrigger].forEach((element) => {
+        if (element) {
+            element.style.display = isAdmin ? "none" : "";
+        }
+    });
+
+    const dashboardItem =
+        document.getElementById("menu-admin-dashboard");
+
+    if (dashboardItem) {
+        dashboardItem.style.display = isAdmin ? "" : "none";
+    }
+}
+
 // =====================================================
 // AUTHORIZED FETCH
 // =====================================================
@@ -2130,6 +2156,9 @@ postForm?.addEventListener(
         return;
     }
 
+    // Cached role first so an admin never sees the composer flash on screen.
+    applyViewerRoleUI();
+
     try {
         const response = await authFetch(`${API_URL}/api/auth/me`);
 
@@ -2145,6 +2174,8 @@ postForm?.addEventListener(
             JSON.stringify(currentUser)
         );
         localStorage.setItem("synapse_role", userRole);
+
+        applyViewerRoleUI();
 
     } catch (error) {
         if (error.message.startsWith("Session expired")) {
