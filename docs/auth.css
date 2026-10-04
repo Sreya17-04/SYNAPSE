@@ -14,12 +14,12 @@
     --accent-hover: #4338ca;
     --accent-light: #eef1ff;
     --violet: #8b5cf6;
-    --bg: #f4f6fc;
-    --card: #ffffff;
-    --text: #0e1220;
-    --text-secondary: #4a5468;
-    --text-muted: #8a94ab;
-    --border: #e4e8f4;
+    --bg: #0a0d17;
+    --card: #121826;
+    --text: #edf0f8;
+    --text-secondary: #b7c0d6;
+    --text-muted: #8b95ad;
+    --border: #242c42;
     --danger: #ef4444;
     --success: #10b981;
     --radius: 14px;
@@ -38,10 +38,10 @@ body {
     color: var(--text);
     -webkit-font-smoothing: antialiased;
     background:
-        radial-gradient(1100px 700px at 10% -18%, rgba(99, 102, 241, 0.24), transparent 62%),
-        radial-gradient(920px 640px at 108% 4%, rgba(236, 72, 153, 0.2), transparent 58%),
-        radial-gradient(820px 560px at 48% 118%, rgba(56, 189, 248, 0.18), transparent 62%),
-        linear-gradient(155deg, #f8f9ff 0%, #eef1fb 48%, #f9f6ff 100%);
+        radial-gradient(1100px 700px at 10% -18%, rgba(99, 102, 241, 0.34), transparent 62%),
+        radial-gradient(920px 640px at 108% 4%, rgba(236, 72, 153, 0.26), transparent 58%),
+        radial-gradient(820px 560px at 48% 118%, rgba(56, 189, 248, 0.2), transparent 62%),
+        linear-gradient(155deg, #0a0d17 0%, #0d1122 48%, #0b0a1a 100%);
 }
 
 ::selection { background: rgba(99, 102, 241, 0.24); }
@@ -113,9 +113,9 @@ body {
 .tile {
     position: absolute;
     border-radius: 26px;
-    background: linear-gradient(140deg, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.16));
-    border: 1px solid rgba(255, 255, 255, 0.8);
-    box-shadow: 0 26px 54px -34px rgba(45, 32, 120, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.95);
+    background: linear-gradient(140deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.03));
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    box-shadow: 0 26px 54px -34px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.22);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
     transform: translate3d(var(--px, 0px), var(--py, 0px), 0);
@@ -153,8 +153,8 @@ body {
     border-radius: 50%;
     pointer-events: none;
     background: radial-gradient(circle,
-        rgba(129, 140, 248, 0.46) 0%,
-        rgba(236, 72, 153, 0.26) 42%,
+        rgba(129, 140, 248, 0.4) 0%,
+        rgba(236, 72, 153, 0.22) 42%,
         rgba(236, 72, 153, 0) 70%);
     filter: blur(26px);
     will-change: transform;
@@ -172,13 +172,13 @@ body {
     border-radius: 28px;
     /* Specular highlight tracks the pointer through --mx/--my. */
     background:
-        radial-gradient(360px circle at var(--mx, 50%) var(--my, 0%), rgba(255, 255, 255, 0.86), transparent 62%),
-        rgba(255, 255, 255, 0.7);
-    border: 1px solid rgba(255, 255, 255, 0.85);
+        radial-gradient(360px circle at var(--mx, 50%) var(--my, 0%), rgba(255, 255, 255, 0.12), transparent 62%),
+        rgba(16, 21, 38, 0.72);
+    border: 1px solid rgba(255, 255, 255, 0.14);
     box-shadow:
-        0 44px 90px -48px rgba(45, 32, 120, 0.6),
-        0 12px 32px -26px rgba(79, 70, 229, 0.55),
-        inset 0 1px 0 rgba(255, 255, 255, 0.95);
+        0 44px 90px -48px rgba(0, 0, 0, 0.85),
+        0 12px 32px -26px rgba(79, 70, 229, 0.5),
+        inset 0 1px 0 rgba(255, 255, 255, 0.16);
     backdrop-filter: blur(24px) saturate(165%);
     -webkit-backdrop-filter: blur(24px) saturate(165%);
     animation: formIn 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
@@ -242,9 +242,9 @@ body {
     font-weight: 700;
     letter-spacing: 1.1px;
     text-transform: uppercase;
-    color: var(--accent);
-    background: rgba(238, 241, 255, 0.85);
-    border: 1px solid rgba(99, 102, 241, 0.22);
+    color: #a5b4fc;
+    background: rgba(99, 102, 241, 0.16);
+    border: 1px solid rgba(129, 140, 248, 0.32);
     padding: 0.3rem 0.75rem;
     border-radius: 999px;
     margin-bottom: 1.1rem;
@@ -283,8 +283,8 @@ body {
     width: 100%;
     padding: 0.85rem 1rem;
     border-radius: 12px;
-    border: 1.5px solid rgba(228, 232, 244, 0.95);
-    background: rgba(255, 255, 255, 0.78);
+    border: 1.5px solid rgba(255, 255, 255, 0.14);
+    background: rgba(255, 255, 255, 0.06);
     color: var(--text);
     font-size: 0.95rem;
     font-family: inherit;
@@ -296,8 +296,8 @@ body {
 .form-group input:focus {
     outline: none;
     border-color: var(--accent);
-    background: #fff;
-    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.14);
+    background: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.24);
 }
 
 .btn-submit {
@@ -399,15 +399,15 @@ a.btn-submit { text-decoration: none; display: flex; }
 }
 
 .alert-error {
-    background: #fef2f2;
-    color: #b91c1c;
-    border-color: #fecaca;
+    background: rgba(127, 29, 29, 0.32);
+    color: #fca5a5;
+    border-color: rgba(248, 113, 113, 0.45);
 }
 
 .alert-success {
-    background: #ecfdf5;
-    color: #047857;
-    border-color: #a7f3d0;
+    background: rgba(6, 95, 70, 0.32);
+    color: #6ee7b7;
+    border-color: rgba(52, 211, 153, 0.45);
 }
 
 @keyframes orbFloat {
