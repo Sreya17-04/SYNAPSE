@@ -185,6 +185,13 @@ not a cosmetic label.
 10 attempts per 15 minutes keyed by IP + submitted email, registration to 5 per
 hour per IP, and reports to 10 per hour per IP.
 
+**Errors answer with real HTTP status codes.** Unknown URLs get the styled
+`404.html` with a 404 status, unhandled server errors get `500.html`, and a
+browser that opens an `/api/*` URL while the database is down gets `503.html`
+(`fetch` callers keep receiving JSON, since they don't advertise `text/html`).
+GitHub Pages serves `docs/404.html` for its own unknown paths. The pages live
+in `frontend/` - re-sync `docs/` after editing them.
+
 **The API base URL is derived, not hardcoded.** `frontend/config.js` computes it
 from `window.location.origin`, so the app works on any port or host. Adding a
 custom domain only requires listing it in `CORS_ORIGINS`, which feeds both the

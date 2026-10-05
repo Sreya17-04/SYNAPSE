@@ -1,5 +1,6 @@
 const path = require("path");
 const fs = require("fs");
+const http = require("http");
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
@@ -142,6 +143,37 @@ app.use(
 );
 
 // ==========================================
+// FRONTEND DIRECTORY + ERROR PAGES
+// Prefer docs (the GitHub Pages publishable copy) if it exists, else frontend.
+//
+// The error pages live in the static directory, so one file serves both
+// hosts: GitHub Pages answers unknown paths with docs/404.html and a real
+// 404 status on its own, while Express uses the same files (via
+// sendErrorPage) for 404/500/503 responses.
+// ==========================================
+const DOCS_DIR = path.join(__dirname, "..", "docs");
+const FRONTEND_DIR = fs.existsSync(DOCS_DIR) ? DOCS_DIR : path.join(__dirname, "..", "frontend");
+
+const sendErrorPage = (res, status, file) => {
+    fs.readFile(path.join(FRONTEND_DIR, file), "utf8", (error, html) => {
+        if (error) {
+            return res
+                .status(status)
+                .type("text/plain")
+                .send(`${status} ${http.STATUS_CODES[status] || "Error"}`);
+        }
+
+        // The shipped pages declare <base href="./"> so they keep working
+        // under GitHub Pages' /SYNAPSE/ sub-path. Express serves at the
+        // origin root, so swap the base to keep links correct no matter how
+        // deep the wrong URL was.
+        res.status(status)
+            .type("html")
+            .send(html.replace('<base href="./">', '<base href="/">'));
+    });
+};
+
+// ==========================================
 // DATABASE AVAILABILITY
 // bufferCommands is disabled (see config/db.js), so a query issued while the
 // connection is down throws immediately. Answer with 503 rather than letting
@@ -149,6 +181,12 @@ app.use(
 // ==========================================
 app.use("/api", (req, res, next) => {
     if (mongoose.connection.readyState !== 1) {
+        // A browser navigation advertises text/html in Accept and gets the
+        // styled 503 page; fetch() and other API clients keep getting JSON.
+        if (String(req.headers.accept || "").includes("text/html")) {
+            return sendErrorPage(res, 503, "503.html");
+        }
+
         return res.status(503).json({
             message: "Database is unavailable. Please retry shortly."
         });
@@ -178,14 +216,17 @@ app.get("/api/health", (req, res) => {
 
 // Serve the frontend from the same origin so the app runs on one port.
 // The HTML files are public; all data still requires a valid JWT.
-// Prefer docs (for GitHub Pages publishable) if it exists, else frontend.
-const DOCS_DIR = path.join(__dirname, "..", "docs");
-const FRONTEND_DIR = fs.existsSync(DOCS_DIR) ? DOCS_DIR : path.join(__dirname, "..", "frontend");
 app.use(express.static(FRONTEND_DIR, { extensions: ["html"] }));
 
 // Unknown API route -> JSON 404 (never fall through to the static handler)
 app.use("/api", (req, res) => {
     res.status(404).json({ message: `Route not found: ${req.method} ${req.originalUrl}` });
+});
+
+// Unknown page/asset route -> styled 404 page with a real 404 status, so a
+// typo'd URL cannot masquerade as a successful 200 response.
+app.use((req, res) => {
+    sendErrorPage(res, 404, "404.html");
 });
 
 // Global error handler
@@ -210,6 +251,16 @@ app.use((error, req, res, next) => {
     }
 
     console.error("Unhandled error:", error);
+
+    // Page loads get the styled 500 page; API callers keep getting JSON.
+    const wantsHtml =
+        !req.path.startsWith("/api") &&
+        String(req.headers.accept || "").includes("text/html");
+
+    if (wantsHtml) {
+        return sendErrorPage(res, 500, "500.html");
+    }
+
     res.status(500).json({ message: "Internal server error." });
 });
 

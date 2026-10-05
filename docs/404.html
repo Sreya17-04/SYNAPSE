@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SYNAPSE - Page Not Found</title>
+    <meta name="theme-color" content="#0a0d17">
+    <!-- Express rewrites this to href="/" when it serves the page (the app is
+         mounted at the origin root). GitHub Pages serves the file as-is, where
+         "./" keeps every link inside the /SYNAPSE/ sub-path. -->
+    <base href="./">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@600;700;800&display=swap">
+    <link rel="stylesheet" href="error.css">
+</head>
+
+<body>
+    <main class="error-page">
+        <div class="error-bg" aria-hidden="true">
+            <span class="orb orb-a"></span>
+            <span class="orb orb-b"></span>
+            <span class="orb orb-c"></span>
+        </div>
+
+        <section class="error-card">
+            <div class="error-brand">
+                <div class="brand-logo">S</div>
+                <div>
+                    <div class="brand-name">SYNAPSE</div>
+                    <div class="brand-sub">Department Community</div>
+                </div>
+            </div>
+
+            <div class="status-code">404</div>
+            <span class="status-label">Page not found</span>
+            <p class="status-text">
+                The page you're looking for doesn't exist. The link may be broken
+                or outdated - head back to the feed to keep browsing.
+            </p>
+
+            <div class="error-actions">
+                <a class="btn-home" href="index.html">Back to home</a>
+                <a class="btn-ghost" href="login.html">Sign in</a>
+            </div>
+        </section>
+    </main>
+</body>
+
+</html>
