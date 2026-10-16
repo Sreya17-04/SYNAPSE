@@ -10,21 +10,21 @@
    ===================================================== */
 
 :root {
-    --accent: #4f46e5;
-    --accent-hover: #4338ca;
-    --accent-light: #eef1ff;
-    --violet: #8b5cf6;
-    --bg: #0a0d17;
-    --card: #121826;
-    --text: #edf0f8;
-    --text-secondary: #b7c0d6;
-    --text-muted: #8b95ad;
-    --border: #242c42;
-    --danger: #ef4444;
-    --success: #10b981;
+    --accent: #3366ff;
+    --accent-hover: #598eff;
+    --accent-light: rgba(51, 102, 255, 0.16);
+    --violet: #598eff;
+    --bg: #0a0a0a;
+    --card: #171717;
+    --text: #f5f5f5;
+    --text-secondary: #a3a3a3;
+    --text-muted: #737373;
+    --border: #262626;
+    --danger: #f43f5e;
+    --success: #34d399;
     --radius: 14px;
-    --grad-cta: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-    --shadow-card: 0 30px 60px -30px rgba(30, 27, 90, 0.35), 0 10px 30px -20px rgba(79, 70, 229, 0.3);
+    --grad-cta: linear-gradient(135deg, #1f47f5 0%, #3366ff 100%);
+    --shadow-card: 0 30px 60px -30px rgba(0, 0, 0, 0.85), 0 0 14px rgba(31, 71, 245, 0.35);
     --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -38,13 +38,13 @@ body {
     color: var(--text);
     -webkit-font-smoothing: antialiased;
     background:
-        radial-gradient(1100px 700px at 10% -18%, rgba(99, 102, 241, 0.34), transparent 62%),
-        radial-gradient(920px 640px at 108% 4%, rgba(236, 72, 153, 0.26), transparent 58%),
-        radial-gradient(820px 560px at 48% 118%, rgba(56, 189, 248, 0.2), transparent 62%),
-        linear-gradient(155deg, #0a0d17 0%, #0d1122 48%, #0b0a1a 100%);
+        radial-gradient(1100px 700px at 10% -18%, rgba(31, 71, 245, 0.30), transparent 62%),
+        radial-gradient(920px 640px at 108% 4%, rgba(31, 71, 245, 0.16), transparent 58%),
+        radial-gradient(820px 560px at 48% 118%, rgba(89, 142, 255, 0.16), transparent 62%),
+        linear-gradient(155deg, #000000 0%, #050505 48%, #000000 100%);
 }
 
-::selection { background: rgba(99, 102, 241, 0.24); }
+::selection { background: rgba(51, 102, 255, 0.3); }
 
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 8px; }
 
@@ -91,13 +91,13 @@ body {
 .orb-a {
     width: 360px; height: 360px;
     left: -110px; top: -130px;
-    background: radial-gradient(circle at 36% 32%, rgba(99, 102, 241, 0.5), rgba(99, 102, 241, 0) 68%);
+    background: radial-gradient(circle at 36% 32%, rgba(31, 71, 245, 0.5), rgba(31, 71, 245, 0) 68%);
 }
 
 .orb-b {
     width: 320px; height: 320px;
     right: -90px; top: 14%;
-    background: radial-gradient(circle at 60% 40%, rgba(236, 72, 153, 0.42), rgba(236, 72, 153, 0) 70%);
+    background: radial-gradient(circle at 60% 40%, rgba(31, 71, 245, 0.42), rgba(31, 71, 245, 0) 70%);
     animation-duration: 26s;
     animation-direction: reverse;
 }
@@ -154,8 +154,8 @@ body {
     pointer-events: none;
     background: radial-gradient(circle,
         rgba(129, 140, 248, 0.4) 0%,
-        rgba(236, 72, 153, 0.22) 42%,
-        rgba(236, 72, 153, 0) 70%);
+        rgba(31, 71, 245, 0.22) 42%,
+        rgba(31, 71, 245, 0) 70%);
     filter: blur(26px);
     will-change: transform;
     transition: transform 0.6s var(--ease-out);
@@ -173,11 +173,11 @@ body {
     /* Specular highlight tracks the pointer through --mx/--my. */
     background:
         radial-gradient(360px circle at var(--mx, 50%) var(--my, 0%), rgba(255, 255, 255, 0.12), transparent 62%),
-        rgba(16, 21, 38, 0.72);
+        rgba(23, 23, 23, 0.74);
     border: 1px solid rgba(255, 255, 255, 0.14);
     box-shadow:
         0 44px 90px -48px rgba(0, 0, 0, 0.85),
-        0 12px 32px -26px rgba(79, 70, 229, 0.5),
+        0 12px 32px -26px rgba(31, 71, 245, 0.5),
         inset 0 1px 0 rgba(255, 255, 255, 0.16);
     backdrop-filter: blur(24px) saturate(165%);
     -webkit-backdrop-filter: blur(24px) saturate(165%);
@@ -206,7 +206,7 @@ body {
     font-weight: 800;
     position: relative;
     overflow: hidden;
-    box-shadow: 0 16px 30px -14px rgba(99, 102, 241, 0.95), inset 0 1px 0 rgba(255, 255, 255, 0.55);
+    box-shadow: 0 16px 30px -14px rgba(31, 71, 245, 0.95), inset 0 1px 0 rgba(255, 255, 255, 0.55);
 }
 
 .brand-logo::after {
@@ -243,7 +243,7 @@ body {
     letter-spacing: 1.1px;
     text-transform: uppercase;
     color: #a5b4fc;
-    background: rgba(99, 102, 241, 0.16);
+    background: rgba(31, 71, 245, 0.16);
     border: 1px solid rgba(129, 140, 248, 0.32);
     padding: 0.3rem 0.75rem;
     border-radius: 999px;
@@ -297,7 +297,7 @@ body {
     outline: none;
     border-color: var(--accent);
     background: rgba(255, 255, 255, 0.1);
-    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.24);
+    box-shadow: 0 0 0 4px rgba(31, 71, 245, 0.24);
 }
 
 .btn-submit {
@@ -312,7 +312,7 @@ body {
     cursor: pointer;
     font-family: inherit;
     letter-spacing: 0.2px;
-    box-shadow: 0 14px 30px -14px rgba(99, 102, 241, 0.9);
+    box-shadow: 0 14px 30px -14px rgba(31, 71, 245, 0.9);
     transition: transform 0.16s, box-shadow 0.16s, filter 0.16s;
     margin-top: 0.6rem;
     display: inline-flex;
@@ -324,7 +324,7 @@ body {
 .btn-submit:hover {
     transform: translateY(-2px);
     filter: brightness(1.06);
-    box-shadow: 0 20px 36px -16px rgba(99, 102, 241, 0.95);
+    box-shadow: 0 20px 36px -16px rgba(31, 71, 245, 0.95);
 }
 
 .btn-submit:active { transform: translateY(0); }
@@ -342,7 +342,7 @@ a.btn-submit { text-decoration: none; display: flex; }
     color: var(--accent);
     font-weight: 600;
     text-decoration: underline;
-    text-decoration-color: rgba(99, 102, 241, 0.35);
+    text-decoration-color: rgba(31, 71, 245, 0.35);
     text-underline-offset: 3px;
     transition: text-decoration-color 0.15s;
 }

@@ -112,7 +112,7 @@
 .admin-nav-item.active .admin-nav-icon {
   background: var(--grad-cta);
   color: #fff;
-  box-shadow: 0 6px 14px -8px rgba(99, 102, 241, 0.9);
+  box-shadow: 0 6px 14px -8px rgba(31, 71, 245, 0.9);
 }
 
 /* ---------- Content ---------- */
@@ -239,9 +239,9 @@
 }
 
 .stat-icon-wrapper.violet {
-  background: linear-gradient(135deg, rgba(139, 92, 246, 0.16), transparent);
-  border-color: rgba(139, 92, 246, 0.3);
-  color: #8b5cf6;
+  background: linear-gradient(135deg, rgba(51, 102, 255, 0.16), transparent);
+  border-color: rgba(89, 142, 255, 0.4);
+  color: #3366ff;
 }
 
 .stat-icon-wrapper.mint {
@@ -526,7 +526,7 @@
 .table-scroll { overflow-x: auto; }
 
 /* Gradient backing for the SYNAPSE monogram in the header. */
-.logo-badge-gradient { background: linear-gradient(135deg, #ef4444, #9333ea 60%, #6366f1); }
+.logo-badge-gradient { background: linear-gradient(135deg, #1f47f5, #3366ff 60%, #598eff); }
 
 /* The pending-reviews tile uses the warning colour so it stands out. */
 .stat-pending { color: var(--warning); }
