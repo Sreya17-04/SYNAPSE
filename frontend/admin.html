@@ -149,15 +149,20 @@
                 <span class="admin-nav-icon"><svg class="icon" aria-hidden="true"><use href="#i-doc"></use></svg></span>
                 Posts
             </button>
-            <button class="admin-nav-item" id="tab-announcements" data-tab="announcements" type="button"
+            <button class="admin-nav-item" id="tab-announcements" data-tab="announcements" data-admin-only type="button"
                 role="tab" aria-selected="false" aria-controls="panel-announcements" tabindex="-1">
                 <span class="admin-nav-icon"><svg class="icon" aria-hidden="true"><use href="#i-megaphone"></use></svg></span>
                 Announcements
             </button>
-            <button class="admin-nav-item" id="tab-users" data-tab="users" type="button"
+            <button class="admin-nav-item" id="tab-users" data-tab="users" data-admin-only type="button"
                 role="tab" aria-selected="false" aria-controls="panel-users" tabindex="-1">
                 <span class="admin-nav-icon"><svg class="icon" aria-hidden="true"><use href="#i-users"></use></svg></span>
                 Users
+            </button>
+            <button class="admin-nav-item" id="tab-moderators" data-tab="moderators" data-admin-only type="button"
+                role="tab" aria-selected="false" aria-controls="panel-moderators" tabindex="-1">
+                <span class="admin-nav-icon"><svg class="icon" aria-hidden="true"><use href="#i-users"></use></svg></span>
+                Moderators
             </button>
             <button class="admin-nav-item" id="tab-flagged" data-tab="flagged" type="button"
                 role="tab" aria-selected="false" aria-controls="panel-flagged" tabindex="-1">
@@ -302,6 +307,11 @@
                                 <tbody id="announcements-tbody"></tbody>
                             </table>
                         </div>
+                        <div class="table-pager" id="announcements-pager">
+                            <button class="btn-table-action" id="announcements-prev" type="button">&larr; Prev</button>
+                            <span class="pager-info" id="announcements-page-info">Page 1</span>
+                            <button class="btn-table-action" id="announcements-next" type="button">Next &rarr;</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -330,6 +340,37 @@
                                 </tr>
                             </thead>
                             <tbody id="users-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== MODERATORS TAB (admin only) ===== -->
+            <div id="panel-moderators" class="admin-panel panel-hidden" role="tabpanel" aria-labelledby="tab-moderators" tabindex="0">
+                <div class="admin-header-title">
+                    <span class="admin-eyebrow">Staff</span>
+                    <h1>Moderators</h1>
+                    <p>Student accounts promoted to moderator. Promote or demote from the Users tab.</p>
+                </div>
+                <div class="table-card">
+                    <div class="table-card-header">
+                        <h2>Staff Accounts</h2>
+                        <button class="btn-create-post-banner" id="moderators-refresh-btn" type="button">
+                            <svg class="icon" aria-hidden="true"><use href="#i-refresh"></use></svg>
+                            Refresh
+                        </button>
+                    </div>
+                    <div class="table-scroll">
+                        <table class="admin-table">
+                            <thead><tr>
+                                    <th scope="col">Name</th>
+                                    <th scope="col">Email / Reg No</th>
+                                    <th scope="col">Role</th>
+                                    <th scope="col">Joined</th>
+                                    <th scope="col">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="moderators-tbody"></tbody>
                         </table>
                     </div>
                 </div>
@@ -403,6 +444,24 @@
                 <button id="admin-modal-close" class="modal-close-btn" type="button" aria-label="Close post preview">&times;</button>
             </div>
             <div class="modal-body" id="admin-modal-body"></div>
+        </div>
+    </div>
+
+    <!-- CONFIRM MODAL (in-app replacement for native confirm()) -->
+    <div class="modal-overlay" id="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
+        <div class="modal-card confirm-card">
+            <div class="modal-header">
+                <h3 id="confirm-title">Are you sure?</h3>
+                <button id="close-confirm-modal" class="modal-close-btn" type="button"
+                    aria-label="Close confirm dialog">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p id="confirm-message">This action cannot be undone.</p>
+                <div class="action-row">
+                    <button type="button" id="confirm-cancel" class="btn-cancel">Cancel</button>
+                    <button type="button" id="confirm-ok" class="btn-danger">Confirm</button>
+                </div>
+            </div>
         </div>
     </div>
 

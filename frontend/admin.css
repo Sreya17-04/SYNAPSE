@@ -600,3 +600,29 @@ body.dark-mode .btn-delete { background: rgba(239, 68, 68, 0.18); color: #fca5a5
 }
 /* The inline SVG sprite is never rendered directly. */
 .icon-sprite { display: none; }
+
+/* =====================================================
+   TABLE PAGER + DISABLED ACTIONS
+   Server-side paginated lists (announcements) flip pages in
+   place instead of loading everything at once.
+   ===================================================== */
+.table-pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 0.9rem 1rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.table-pager .pager-info {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.btn-table-action:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}

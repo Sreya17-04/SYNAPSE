@@ -30,10 +30,31 @@ if (!token || !adminUser) {
     throw new Error("Admin authentication required.");
 }
 
-// Redirect non-admin users
-if (userRole !== "admin" || adminUser.role !== "admin") {
+// The dashboard is shared by admins and moderators. Moderators are promoted
+// students who sign in on the student login page, so both roles must pass
+// here; plain students are bounced.
+const isAdmin = userRole === "admin" || adminUser.role === "admin";
+const isModerator =
+    userRole === "moderator" || adminUser.role === "moderator";
+
+if (!isAdmin && !isModerator) {
     window.location.replace("login.html");
-    throw new Error("Admin access required.");
+    throw new Error("Staff access required.");
+}
+
+// Moderators get the moderation tabs only; user, announcement and moderator
+// roster management is admin-only on the server too, so hiding the controls
+// here keeps the UI honest instead of a wall of 403s.
+function applyRoleGating() {
+    if (isAdmin) {
+        return;
+    }
+
+    document
+        .querySelectorAll("[data-admin-only]")
+        .forEach((element) => {
+            element.style.display = "none";
+        });
 }
 
 // =====================================================
@@ -278,6 +299,68 @@ function showToast(message, type = "info") {
 }
 
 // =====================================================
+// CONFIRM MODAL
+// In-app replacement for native confirm(), so wording and styling match
+// the rest of the app and the dialog can be themed and keyboard-trapped.
+// =====================================================
+
+const confirmModalEl = document.getElementById("confirm-modal");
+const confirmTitleEl = document.getElementById("confirm-title");
+const confirmMessageEl = document.getElementById("confirm-message");
+const confirmOkBtn = document.getElementById("confirm-ok");
+const confirmCancelBtn = document.getElementById("confirm-cancel");
+const closeConfirmModalBtn = document.getElementById("close-confirm-modal");
+
+let confirmResolve = null;
+let confirmLastFocused = null;
+
+function showConfirm(title, message, confirmLabel = "Confirm") {
+    if (!confirmModalEl) {
+        return Promise.resolve(window.confirm(message));
+    }
+
+    confirmLastFocused = document.activeElement;
+
+    if (confirmTitleEl) confirmTitleEl.textContent = title;
+    if (confirmMessageEl) confirmMessageEl.textContent = message;
+    if (confirmOkBtn && confirmLabel) {
+        confirmOkBtn.textContent = confirmLabel;
+    }
+
+    confirmModalEl.classList.add("show");
+    confirmOkBtn?.focus();
+
+    return new Promise((resolve) => {
+        confirmResolve = resolve;
+    });
+}
+
+function closeConfirm(result) {
+    if (!confirmModalEl?.classList.contains("show")) return;
+
+    confirmModalEl.classList.remove("show");
+
+    confirmResolve?.(result);
+    confirmResolve = null;
+
+    confirmLastFocused?.focus();
+}
+
+confirmOkBtn?.addEventListener("click", () => closeConfirm(true));
+confirmCancelBtn?.addEventListener("click", () => closeConfirm(false));
+closeConfirmModalBtn?.addEventListener("click", () => closeConfirm(false));
+
+confirmModalEl?.addEventListener("click", (event) => {
+    if (event.target === confirmModalEl) closeConfirm(false);
+});
+
+document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && confirmModalEl?.classList.contains("show")) {
+        closeConfirm(false);
+    }
+});
+
+// =====================================================
 // THEME
 // =====================================================
 
@@ -337,7 +420,9 @@ function setupAdminProfile() {
 
     if (emailElement) {
         emailElement.textContent =
-            adminUser.email || "admin@synapse.edu";
+            adminUser.email ||
+            adminUser.universityRegNo ||
+            "Not set";
     }
 
     if (initialsElement) {
@@ -558,6 +643,10 @@ function setupTabs() {
                     renderFlaggedTable();
                 }
 
+                if (tab === "moderators") {
+                    showModeratorsTab();
+                }
+
                 if (tab === "reports") {
                     showReportsTab();
                 }
@@ -568,21 +657,26 @@ function setupTabs() {
         // Roving tabindex: arrow keys move between tabs, per the WAI-ARIA
         // tabs pattern.
         button.addEventListener("keydown", (event) => {
-            const index =
-                [...tabButtons].indexOf(button);
+            // Role gating hides some tabs, so arrow keys must walk only the
+            // ones still on screen.
+            const visibleTabs = [...tabButtons].filter(
+                (btn) => btn.offsetParent !== null
+            );
+
+            const index = visibleTabs.indexOf(button);
 
             let nextIndex = null;
 
             if (event.key === "ArrowRight") {
-                nextIndex = (index + 1) % tabButtons.length;
+                nextIndex = (index + 1) % visibleTabs.length;
             } else if (event.key === "ArrowLeft") {
                 nextIndex =
-                    (index - 1 + tabButtons.length) %
-                    tabButtons.length;
+                    (index - 1 + visibleTabs.length) %
+                    visibleTabs.length;
             } else if (event.key === "Home") {
                 nextIndex = 0;
             } else if (event.key === "End") {
-                nextIndex = tabButtons.length - 1;
+                nextIndex = visibleTabs.length - 1;
             }
 
             if (nextIndex === null) {
@@ -591,7 +685,7 @@ function setupTabs() {
 
             event.preventDefault();
 
-            const nextButton = tabButtons[nextIndex];
+            const nextButton = visibleTabs[nextIndex];
 
             nextButton.focus();
             nextButton.click();
@@ -607,10 +701,13 @@ let allAdminPosts = [];
 let allUsers = [];
 let allAnnouncements = [];
 let allReports = [];
+let allModerators = [];
 
-// Reports are fetched the first time their tab is opened rather than on every
-// page load, so a dashboard session with an empty queue costs no extra request.
+// Reports and the moderator roster are fetched the first time their tab is
+// opened rather than on every page load, so a dashboard session that never
+// opens them costs no extra request.
 let reportsLoaded = false;
+let moderatorsLoaded = false;
 
 // =====================================================
 // FETCH DASHBOARD STATS
@@ -688,7 +785,7 @@ async function fetchStats() {
 
         if (flaggedCount) {
             flaggedCount.textContent =
-                data.pendingReports ?? 0;
+                data.flaggedPosts ?? 0;
         }
 
     } catch (error) {
@@ -826,10 +923,18 @@ async function fetchUsers() {
 // FETCH ANNOUNCEMENTS
 // =====================================================
 
-async function fetchAnnouncements() {
+// The admin announcements feed is paginated server-side (20 per page here),
+// so the sidebar's short list and the admin table never pull the whole
+// collection into memory.
+const ANNOUNCEMENTS_PAGE_SIZE = 20;
+
+let announcementsPage = 1;
+let announcementsTotal = 0;
+
+async function fetchAnnouncements(page = announcementsPage) {
     try {
         const response = await adminFetch(
-            `${API}/api/admin/announcements`
+            `${API}/api/admin/announcements?page=${page}&limit=${ANNOUNCEMENTS_PAGE_SIZE}`
         );
 
         if (response.status === 403) {
@@ -839,17 +944,71 @@ async function fetchAnnouncements() {
 
         if (!response.ok) {
             throw new Error(
-                `Announcements request failed: ${response.status}`
+                await readError(
+                    response,
+                    `Announcements request failed: ${response.status}`
+                )
             );
         }
 
         const data = await response.json();
-        allAnnouncements = Array.isArray(data) ? data : [];
+
+        allAnnouncements = Array.isArray(data)
+            ? data
+            : (data.announcements || []);
+
+        announcementsTotal = Number.isFinite(data.total)
+            ? data.total
+            : allAnnouncements.length;
+
+        announcementsPage = data.page || page;
+
         renderAnnouncementsTable();
+        renderAnnouncementsPager();
     } catch (error) {
         console.error("Announcements error:", error);
-        showToast("Could not load announcements.", "error");
+        showToast(
+            error.message || "Could not load announcements.",
+            "error"
+        );
     }
+}
+
+function renderAnnouncementsPager() {
+    const info = get("announcements-page-info");
+    const prev = get("announcements-prev");
+    const next = get("announcements-next");
+
+    if (!info || !prev || !next) return;
+
+    const totalPages = Math.max(
+        1,
+        Math.ceil(announcementsTotal / ANNOUNCEMENTS_PAGE_SIZE)
+    );
+
+    info.textContent = `Page ${announcementsPage} of ${totalPages}`;
+
+    prev.disabled = announcementsPage <= 1;
+    next.disabled = announcementsPage >= totalPages;
+}
+
+function setupAnnouncementsPager() {
+    get("announcements-prev")?.addEventListener("click", () => {
+        if (announcementsPage > 1) {
+            fetchAnnouncements(announcementsPage - 1);
+        }
+    });
+
+    get("announcements-next")?.addEventListener("click", () => {
+        const totalPages = Math.max(
+            1,
+            Math.ceil(announcementsTotal / ANNOUNCEMENTS_PAGE_SIZE)
+        );
+
+        if (announcementsPage < totalPages) {
+            fetchAnnouncements(announcementsPage + 1);
+        }
+    });
 }
 
 function renderAnnouncementsTable() {
@@ -893,7 +1052,13 @@ function renderAnnouncementsTable() {
 
     tbody.querySelectorAll("[data-announcement-id]").forEach(button => {
         button.addEventListener("click", async () => {
-            if (!window.confirm("Delete this announcement?")) return;
+            const confirmed = await showConfirm(
+                "Delete announcement?",
+                "This removes it from the student sidebar immediately.",
+                "Delete"
+            );
+
+            if (!confirmed) return;
 
             try {
                 const response = await adminFetch(
@@ -921,7 +1086,15 @@ function renderAnnouncementsTable() {
                     "success"
                 );
 
-                await fetchAnnouncements();
+                // Deleting the last row of a page would otherwise strand the
+                // pager on an empty page.
+                const nextPage =
+                    allAnnouncements.length === 1 &&
+                    announcementsPage > 1
+                        ? announcementsPage - 1
+                        : announcementsPage;
+
+                await fetchAnnouncements(nextPage);
             } catch (error) {
                 console.error("Announcement delete error:", error);
                 showToast(error.message, "error");
@@ -969,7 +1142,7 @@ function setupAnnouncementForm() {
 
             form.reset();
             showToast("Announcement published.", "success");
-            await fetchAnnouncements();
+            await fetchAnnouncements(1);
         } catch (error) {
             console.error("Announcement create error:", error);
             showToast(error.message, "error");
@@ -977,6 +1150,193 @@ function setupAnnouncementForm() {
             submitButton.disabled = false;
         }
     });
+}
+
+// =====================================================
+// MODERATOR ROSTER (admin only)
+// =====================================================
+
+function showModeratorsTab() {
+    if (moderatorsLoaded) {
+        renderModeratorsTable();
+        return;
+    }
+
+    fetchModerators();
+}
+
+async function fetchModerators() {
+    const tbody = get("moderators-tbody");
+
+    if (!tbody) return;
+
+    tbody.innerHTML = `
+        <tr>
+            <td colspan="5" class="table-empty">
+                Loading staff accounts...
+            </td>
+        </tr>
+    `;
+
+    try {
+        const response = await adminFetch(
+            `${API}/api/admin/moderators`
+        );
+
+        if (response.status === 403) {
+            handleAdminAuthFailure();
+            return;
+        }
+
+        if (!response.ok) {
+            throw new Error(
+                await readError(
+                    response,
+                    `Moderators request failed: ${response.status}`
+                )
+            );
+        }
+
+        const data = await response.json();
+
+        allModerators = Array.isArray(data)
+            ? data
+            : (data.moderators || []);
+
+        moderatorsLoaded = true;
+
+        renderModeratorsTable();
+    } catch (error) {
+        console.error("Moderators error:", error);
+
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="5" class="table-empty-error">
+                    Failed to load staff accounts.
+                </td>
+            </tr>
+        `;
+
+        showToast(
+            error.message || "Could not load moderators.",
+            "error"
+        );
+    }
+}
+
+function renderModeratorsTable() {
+    const tbody = get("moderators-tbody");
+
+    if (!tbody) return;
+
+    if (allModerators.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="5" class="table-empty">
+                    No staff accounts yet. Promote a student from the Users tab.
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    tbody.innerHTML = allModerators.map((member) => {
+        const date = member.createdAt
+            ? new Date(member.createdAt).toLocaleDateString("en-IN", {
+                day: "numeric",
+                month: "short",
+                year: "numeric"
+            })
+            : "—";
+
+        const role = member.role === "admin" ? "admin" : "moderator";
+
+        // Admin accounts are managed nowhere else; only promoted students
+        // can have the role taken back.
+        const actions = role === "moderator"
+            ? `
+                <button
+                    class="btn-table-action btn-approve"
+                    data-demote-id="${member._id}"
+                    type="button">
+                    Remove Moderator
+                </button>
+            `
+            : "—";
+
+        return `
+            <tr>
+                <td><strong>${escapeHTML(member.name)}</strong></td>
+                <td>${escapeHTML(member.email || member.universityRegNo || "—")}</td>
+                <td>
+                    <span class="badge-status approved">
+                        ${role.toUpperCase()}
+                    </span>
+                </td>
+                <td>${date}</td>
+                <td>${actions}</td>
+            </tr>
+        `;
+    }).join("");
+
+    tbody.querySelectorAll("[data-demote-id]").forEach((button) => {
+        button.addEventListener("click", async () => {
+            const confirmed = await showConfirm(
+                "Remove moderator?",
+                "This account goes back to a regular student. It can be promoted again later.",
+                "Remove"
+            );
+
+            if (!confirmed) return;
+
+            await changeUserRole(button.dataset.demoteId, "student");
+        });
+    });
+}
+
+// Shared by the Users tab (promote) and the Moderators tab (demote).
+async function changeUserRole(userId, role) {
+    try {
+        const response = await adminFetch(
+            `${API}/api/admin/users/${userId}/role`,
+            {
+                method: "PATCH",
+                body: JSON.stringify({ role })
+            }
+        );
+
+        if (response.status === 403) {
+            handleAdminAuthFailure();
+            return;
+        }
+
+        if (!response.ok) {
+            throw new Error(
+                await readError(
+                    response,
+                    "Failed to update role."
+                )
+            );
+        }
+
+        const data = await response.json().catch(() => ({}));
+
+        showToast(
+            data.message || "Role updated.",
+            "success"
+        );
+
+        moderatorsLoaded = false;
+        await fetchModerators();
+        await fetchUsers();
+        await fetchStats();
+    } catch (error) {
+        console.error("Role change error:", error);
+        showToast(
+            error.message || "Failed to update role.",
+            "error"
+        );
+    }
 }
 
 // =====================================================
@@ -1211,19 +1571,25 @@ function renderPostsTable(searchTerm = "") {
                             View
                         </button>
 
-                        <button
-                            class="btn-table-action btn-approve"
-                            data-id="${post._id}"
-                            type="button">
-                            Approve
-                        </button>
-
-                        <button
-                            class="btn-table-action btn-flag"
-                            data-id="${post._id}"
-                            type="button">
-                            Flag
-                        </button>
+                        ${status === "flagged"
+                ? `
+                            <button
+                                class="btn-table-action btn-approve"
+                                data-id="${post._id}"
+                                data-target-status="active"
+                                type="button">
+                                Restore
+                            </button>
+                        `
+                : `
+                            <button
+                                class="btn-table-action btn-flag"
+                                data-id="${post._id}"
+                                data-target-status="flagged"
+                                type="button">
+                                Flag
+                            </button>
+                        `}
 
                         <button
                             class="btn-table-action btn-delete"
@@ -1377,6 +1743,13 @@ function renderUsersTable(searchTerm = "") {
                         </button>
 
                         <button
+                            class="btn-table-action btn-view"
+                            data-user-promote-id="${user._id}"
+                            type="button">
+                            Make Moderator
+                        </button>
+
+                        <button
                             class="btn-table-action btn-delete"
                             data-user-delete-id="${user._id}"
                             type="button">
@@ -1405,6 +1778,31 @@ function renderUsersTable(searchTerm = "") {
                 }
             );
 
+        });
+
+    tbody
+        .querySelectorAll("[data-user-promote-id]")
+        .forEach((button) => {
+            button.addEventListener("click", async () => {
+                const user = allUsers.find(
+                    (item) =>
+                        String(item._id) ===
+                        String(button.dataset.userPromoteId)
+                );
+
+                const confirmed = await showConfirm(
+                    "Make moderator?",
+                    `${user?.name || "This student"} will be able to moderate posts and reports, and will get a Dashboard link on the community feed.`,
+                    "Promote"
+                );
+
+                if (!confirmed) return;
+
+                await changeUserRole(
+                    button.dataset.userPromoteId,
+                    "moderator"
+                );
+            });
         });
 
     tbody
@@ -1488,10 +1886,11 @@ async function deleteUser(userId) {
     const name =
         user?.name || "this student";
 
-    const confirmed =
-        window.confirm(
-            `Delete "${name}"?\n\nThis permanently removes the account along with their posts, comments and likes. This cannot be undone.`
-        );
+    const confirmed = await showConfirm(
+        "Delete student?",
+        `Delete "${name}"? This permanently removes the account along with their posts, comments and likes. This cannot be undone.`,
+        "Delete"
+    );
 
     if (!confirmed) {
         return;
@@ -1616,8 +2015,9 @@ function renderFlaggedTable() {
                         <button
                             class="btn-table-action btn-approve"
                             data-id="${post._id}"
+                            data-target-status="active"
                             type="button">
-                            Approve
+                            Restore
                         </button>
 
                         <button
@@ -1952,12 +2352,15 @@ async function resolveDismissReport(reportId, status) {
     const title =
         report?.postSnapshot?.title || "this post";
 
-    const confirmed =
-        window.confirm(
-            status === "resolved"
-                ? `Resolve the report on "${title}"?\n\nIt will be marked as resolved.`
-                : `Dismiss the report on "${title}"?\n\nIt will be marked as dismissed.`
-        );
+    const confirmed = await showConfirm(
+        status === "resolved"
+            ? "Resolve report?"
+            : "Dismiss report?",
+        status === "resolved"
+            ? `Resolve the report on "${title}"? It will be marked as resolved.`
+            : `Dismiss the report on "${title}"? It will be marked as dismissed.`,
+        status === "resolved" ? "Resolve" : "Dismiss"
+    );
 
     if (!confirmed) {
         return;
@@ -2074,9 +2477,10 @@ function attachTableActions(container) {
 
         });
 
-    // APPROVE
+    // FLAG / RESTORE - the button carries the target status, so flagged rows
+    // offer "Restore" (back to active) instead of a second flag.
     container
-        .querySelectorAll(".btn-approve")
+        .querySelectorAll("[data-target-status]")
         .forEach((button) => {
 
             button.addEventListener(
@@ -2085,26 +2489,7 @@ function attachTableActions(container) {
 
                     updatePostStatus(
                         button.dataset.id,
-                        "approved"
-                    );
-
-                }
-            );
-
-        });
-
-    // FLAG
-    container
-        .querySelectorAll(".btn-flag")
-        .forEach((button) => {
-
-            button.addEventListener(
-                "click",
-                () => {
-
-                    updatePostStatus(
-                        button.dataset.id,
-                        "flagged"
+                        button.dataset.targetStatus
                     );
 
                 }
@@ -2155,16 +2540,11 @@ async function updatePostStatus(
 
         if (!response.ok) {
 
-            const errorText =
-                await response.text();
-
-            console.error(
-                "Server response:",
-                errorText
-            );
-
             throw new Error(
-                "Failed to update post"
+                await readError(
+                    response,
+                    "Failed to update post."
+                )
             );
         }
 
@@ -2184,7 +2564,9 @@ async function updatePostStatus(
         showToast(
             status === "flagged"
                 ? "Post flagged successfully."
-                : "Post approved successfully.",
+                : status === "active"
+                    ? "Post restored to the feed."
+                    : "Post approved successfully.",
             "success"
         );
 
@@ -2206,7 +2588,7 @@ async function updatePostStatus(
         );
 
         showToast(
-            "Failed to update post.",
+            error.message || "Failed to update post.",
             "error"
         );
     }
@@ -2228,10 +2610,11 @@ async function deletePost(postId) {
     const title =
         post?.title || "this post";
 
-    const confirmed =
-        window.confirm(
-            `Delete "${title}"?\n\nThis cannot be undone.`
-        );
+    const confirmed = await showConfirm(
+        "Delete post?",
+        `Delete "${title}"? This cannot be undone.`,
+        "Delete"
+    );
 
     if (!confirmed) {
         return;
@@ -2249,16 +2632,11 @@ async function deletePost(postId) {
 
         if (!response.ok) {
 
-            const errorText =
-                await response.text();
-
-            console.error(
-                "Delete response:",
-                errorText
-            );
-
             throw new Error(
-                "Failed to delete post"
+                await readError(
+                    response,
+                    "Failed to delete post."
+                )
             );
         }
 
@@ -2292,7 +2670,7 @@ async function deletePost(postId) {
         );
 
         showToast(
-            "Failed to delete post.",
+            error.message || "Failed to delete post.",
             "error"
         );
     }
@@ -2370,17 +2748,10 @@ function openPostModal(post) {
             <div class="action-row">
 
                 <button
-                    class="btn-table-action btn-approve"
-                    id="modal-approve-btn"
-                    type="button">
-                    Approve
-                </button>
-
-                <button
-                    class="btn-table-action btn-flag"
+                    class="btn-table-action ${post.status === "flagged" ? "btn-approve" : "btn-flag"}"
                     id="modal-flag-btn"
                     type="button">
-                    Flag
+                    ${post.status === "flagged" ? "Restore" : "Flag"}
                 </button>
 
                 <button
@@ -2395,23 +2766,6 @@ function openPostModal(post) {
         </div>
     `;
 
-    get("modal-approve-btn")
-        ?.addEventListener(
-            "click",
-            async () => {
-
-                await updatePostStatus(
-                    post._id,
-                    "approved"
-                );
-
-                modal.classList.remove(
-                    "show"
-                );
-
-            }
-        );
-
     get("modal-flag-btn")
         ?.addEventListener(
             "click",
@@ -2419,7 +2773,7 @@ function openPostModal(post) {
 
                 await updatePostStatus(
                     post._id,
-                    "flagged"
+                    post.status === "flagged" ? "active" : "flagged"
                 );
 
                 modal.classList.remove(
@@ -2604,12 +2958,19 @@ function setupRefresh() {
 
             try {
 
-                await Promise.all([
+                const refreshes = [
                     fetchStats(),
-                    fetchAdminPosts(),
-                    fetchUsers(),
-                    fetchAnnouncements()
-                ]);
+                    fetchAdminPosts()
+                ];
+
+                if (isAdmin) {
+                    refreshes.push(
+                        fetchUsers(),
+                        fetchAnnouncements()
+                    );
+                }
+
+                await Promise.all(refreshes);
 
                 showToast(
                     "Dashboard refreshed.",
@@ -2658,6 +3019,28 @@ function setupReportsRefresh() {
 }
 
 // =====================================================
+// MODERATORS REFRESH
+// =====================================================
+
+function setupModeratorsRefresh() {
+    const refreshButton = get("moderators-refresh-btn");
+
+    if (!refreshButton) {
+        return;
+    }
+
+    refreshButton.addEventListener("click", async () => {
+        refreshButton.disabled = true;
+
+        try {
+            await fetchModerators();
+        } finally {
+            refreshButton.disabled = false;
+        }
+    });
+}
+
+// =====================================================
 // INITIALIZE DASHBOARD
 // =====================================================
 
@@ -2668,6 +3051,8 @@ async function initAdminDashboard() {
     );
 
     initTheme();
+
+    applyRoleGating();
 
     setupThemeToggle();
 
@@ -2689,15 +3074,24 @@ async function initAdminDashboard() {
 
     setupReportsRefresh();
 
+    setupModeratorsRefresh();
+
     setupAnnouncementForm();
 
-    // Load dashboard data
-    await Promise.all([
+    setupAnnouncementsPager();
+
+    // Load dashboard data. Admin-only feeds are skipped for moderators so
+    // they never trip a 403 the client would treat as a dead session.
+    const loadInitial = [
         fetchStats(),
-        fetchAdminPosts(),
-        fetchUsers(),
-        fetchAnnouncements()
-    ]);
+        fetchAdminPosts()
+    ];
+
+    if (isAdmin) {
+        loadInitial.push(fetchUsers(), fetchAnnouncements());
+    }
+
+    await Promise.all(loadInitial);
 
     console.log(
         "SYNAPSE Admin Dashboard data loaded."

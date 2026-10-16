@@ -88,7 +88,13 @@ router.post("/login", loginLimiter, async (req, res) => {
 
             const isMatch = user ? await user.matchPassword(password) : false;
 
-            if (!user || !isMatch || user.role !== "student") {
+            // Moderators are promoted students and still sign in with their
+            // registration number + roll number on the student login page.
+            if (
+                !user ||
+                !isMatch ||
+                (user.role !== "student" && user.role !== "moderator")
+            ) {
                 return res.status(401).json({
                     message: "Invalid registration number or password."
                 });

@@ -14,7 +14,12 @@ router.get("/", async (req, res) => {
     try {
         const [students, discussions, announcements] = await Promise.all([
             User.countDocuments({ role: "student" }),
-            Post.countDocuments({ status: { $ne: "flagged" } }),
+            // Mirror the feed's visibility rules: flagged posts and posts
+            // with open reports are not part of the public discussion count.
+            Post.countDocuments({
+                status: { $ne: "flagged" },
+                $or: [{ openReportCount: 0 }, { openReportCount: { $exists: false } }]
+            }),
             Announcement.countDocuments({ isActive: true })
         ]);
 

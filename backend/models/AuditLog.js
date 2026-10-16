@@ -18,6 +18,7 @@ const ACTIONS = [
     "user.flagged",
     "user.unflagged",
     "user.deleted",
+    "user.role_changed",
     "announcement.created",
     "announcement.deleted",
     "report.resolved",

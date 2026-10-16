@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Discussion - SYNAPSE</title>
+    <meta name="description" content="SYNAPSE discussion detail">
+    <meta name="theme-color" content="#0a0d17">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body class="dark-mode">
+
+    <!-- ================= ICON SPRITE ================= -->
+    <svg xmlns="http://www.w3.org/2000/svg" class="icon-sprite" hidden aria-hidden="true" focusable="false">
+        <symbol id="i-search" viewBox="0 0 24 24">
+            <circle cx="11" cy="11" r="7"></circle>
+            <path d="m20 20-3.4-3.4"></path>
+        </symbol>
+        <symbol id="i-sun" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="4"></circle>
+            <path d="M12 2.5v2M12 19.5v2M4.6 4.6 6 6M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4"></path>
+        </symbol>
+        <symbol id="i-moon" viewBox="0 0 24 24">
+            <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"></path>
+        </symbol>
+        <symbol id="i-home" viewBox="0 0 24 24">
+            <path d="M3 10.6 12 3.2l9 7.4"></path>
+            <path d="M5.4 9.6V20.4h13.2V9.6"></path>
+            <path d="M9.6 20.4v-6h4.8v6"></path>
+        </symbol>
+        <symbol id="i-chat" viewBox="0 0 24 24">
+            <path d="M20.5 11.8a7.7 7.7 0 0 1-7.7 7.7H8.2L3.5 22.5l1.3-4.4a7.7 7.7 0 0 1 3-12.4 7.7 7.7 0 0 1 12.7 6.1Z"></path>
+        </symbol>
+        <symbol id="i-heart" viewBox="0 0 24 24">
+            <path d="M20.4 8.6a4.6 4.6 0 0 0-7.9-2.6l-.5.5-.5-.5a4.6 4.6 0 0 0-6.5 6.5l7 7 7-7a4.6 4.6 0 0 0 0-6.5Z"></path>
+        </symbol>
+        <symbol id="i-share" viewBox="0 0 24 24">
+            <path d="m9.6 14.4 4.8-4.8"></path>
+            <path d="M11.2 6.6 13.1 4.7a4.1 4.1 0 0 1 5.8 5.8l-1.9 1.9"></path>
+            <path d="M12.8 17.4l-1.9 1.9a4.1 4.1 0 0 1-5.8-5.8l1.9-1.9"></path>
+        </symbol>
+        <symbol id="i-flag" viewBox="0 0 24 24">
+            <path d="M5.4 21V4.2"></path>
+            <path d="M5.4 5.2h11.2l-2.1 3.6 2.1 3.6H5.4"></path>
+        </symbol>
+        <symbol id="i-trash" viewBox="0 0 24 24">
+            <path d="M4.2 7h15.6"></path>
+            <path d="M9.4 7V5.2a1.2 1.2 0 0 1 1.2-1.2h2.8a1.2 1.2 0 0 1 1.2 1.2V7"></path>
+            <path d="M6.8 7 7.7 19.9a1.2 1.2 0 0 0 1.2 1.1h6.2a1.2 1.2 0 0 0 1.2-1.1L17.2 7"></path>
+        </symbol>
+        <symbol id="i-bookmark" viewBox="0 0 24 24">
+            <path d="M6.5 4h11v16.4L12 16.7l-5.5 3.7V4Z"></path>
+        </symbol>
+        <symbol id="i-inbox" viewBox="0 0 24 24">
+            <path d="M4.4 13.2h4.2l1.5 2.8h3.8l1.5-2.8h4.2"></path>
+            <path d="M6.2 4.6h11.6l2.6 8.6v4.6a2 2 0 0 1-2 2H5.6a2 2 0 0 1-2-2v-4.6L6.2 4.6Z"></path>
+        </symbol>
+        <symbol id="i-alert" viewBox="0 0 24 24">
+            <path d="M10.4 4.4 2.9 17.6a1.9 1.9 0 0 0 1.7 2.8h14.8a1.9 1.9 0 0 0 1.7-2.8L13.6 4.4a1.9 1.9 0 0 0-3.2 0Z"></path>
+            <path d="M12 9.6v4.2"></path>
+            <circle cx="12" cy="16.6" r=".7" fill="currentColor" stroke="none"></circle>
+        </symbol>
+        <symbol id="i-check" viewBox="0 0 24 24">
+            <path d="m5.5 12.6 4.4 4.4L18.5 8.4"></path>
+        </symbol>
+        <symbol id="i-x" viewBox="0 0 24 24">
+            <path d="m6.6 6.6 10.8 10.8M17.4 6.6 6.6 17.4"></path>
+        </symbol>
+        <symbol id="i-info" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="8.8"></circle>
+            <path d="M12 11.2v5"></path>
+            <circle cx="12" cy="7.9" r=".7" fill="currentColor" stroke="none"></circle>
+        </symbol>
+        <symbol id="i-doc" viewBox="0 0 24 24">
+            <path d="M14 3.2H7.4a2 2 0 0 0-2 2v13.6a2 2 0 0 0 2 2h9.2a2 2 0 0 0 2-2V8.2L14 3.2Z"></path>
+            <path d="M13.8 3.4V8.4h5"></path>
+            <path d="M8.8 13h6.4M8.8 16.6h4.2"></path>
+        </symbol>
+        <symbol id="i-arrow-left" viewBox="0 0 24 24">
+            <path d="M19 12H5"></path>
+            <path d="m11 6-6 6 6 6"></path>
+        </symbol>
+    </svg>
+
+    <!-- ================= NAVBAR ================= -->
+    <header class="navbar">
+        <div class="logo">
+            <div class="logo-badge">S</div>
+            <div class="logo-text-container">
+                <span class="logo-title">SYNAPSE</span>
+                <span class="logo-subtitle">Department Community</span>
+            </div>
+        </div>
+
+        <div class="nav-right">
+            <a class="icon-btn" id="back-to-feed" href="index.html" aria-label="Back to feed" title="Back to feed">
+                <svg class="icon" aria-hidden="true"><use href="#i-arrow-left"></use></svg>
+            </a>
+
+            <button class="icon-btn" id="theme-toggle" type="button" aria-label="Toggle dark/light mode"
+                title="Toggle Light/Dark Mode">
+                <span id="theme-icon">
+                    <svg class="icon icon-moon" aria-hidden="true"><use href="#i-moon"></use></svg>
+                    <svg class="icon icon-sun" aria-hidden="true"><use href="#i-sun"></use></svg>
+                </span>
+            </button>
+
+            <div class="notification-menu-container">
+                <button class="icon-btn" id="notification-btn" type="button" aria-label="Notifications"
+                    title="Notifications">
+                    <svg class="icon" aria-hidden="true"><use href="#i-inbox"></use></svg>
+                    <span class="notification-badge is-hidden" id="notification-badge">0</span>
+                </button>
+                <div class="notification-dropdown" id="notification-dropdown" role="menu">
+                    <div class="notification-header">
+                        <strong>Notifications</strong>
+                        <button id="mark-all-read" type="button">Mark all read</button>
+                    </div>
+                    <div class="notification-list" id="notification-list">
+                        <p class="notification-empty">No notifications yet.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="profile-menu-container">
+                <button class="profile-avatar-btn" id="profile-btn" type="button" aria-label="User Profile"
+                    title="Profile">
+                    <span id="profile-initials">S</span>
+                </button>
+                <div class="profile-dropdown" id="profile-dropdown" role="menu">
+                    <div class="profile-dropdown-header">
+                        <strong id="profile-name">Student</strong>
+                        <span id="profile-email">Loading...</span>
+                    </div>
+                    <a class="dropdown-item" href="index.html">
+                        <svg class="icon" aria-hidden="true"><use href="#i-home"></use></svg> Community Feed
+                    </a>
+                    <button class="dropdown-item" id="menu-logout" type="button">
+                        <svg class="icon" aria-hidden="true"><use href="#i-x"></use></svg> Logout
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- ================= MAIN ================= -->
+    <main class="page-container detail-page">
+
+        <div id="detail-status" class="detail-status" role="status"></div>
+
+        <article class="post-card detail-card" id="detail-card">
+            <!-- Rendered by post.js -->
+        </article>
+
+        <section class="widget-card detail-comments" id="comments">
+            <div class="widget-title">
+                <span class="widget-icon">
+                    <svg class="icon" aria-hidden="true"><use href="#i-chat"></use></svg>
+                </span>
+                <span id="comments-heading">Comments</span>
+            </div>
+
+            <div class="comment-input-box detail-comment-input">
+                <input type="text" class="comment-input" id="top-level-comment-input"
+                    placeholder="Write a comment..." aria-label="Write a comment" maxlength="2000">
+                <button type="button" class="btn-submit-comment" id="top-level-comment-btn"
+                    aria-label="Post your comment">Post</button>
+            </div>
+
+            <div class="comments-list detail-comments-list" id="detail-comments-list">
+                <!-- Threaded comments render here -->
+            </div>
+        </section>
+
+    </main>
+
+    <!-- ================= REPORT POST MODAL ================= -->
+    <div class="modal-overlay" id="report-modal" role="dialog" aria-modal="true" aria-labelledby="report-modal-title">
+        <div class="modal-card report-card">
+            <div class="modal-header">
+                <h3 id="report-modal-title">Report Discussion</h3>
+                <button id="close-report-modal" class="modal-close-btn" type="button"
+                    aria-label="Close report dialog">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p class="report-post-title"><strong>Post:</strong> <span id="report-post-title"></span></p>
+
+                <form id="report-form" novalidate>
+                    <fieldset class="report-reasons">
+                        <legend>Why are you reporting this discussion?</legend>
+
+                        <label class="report-option">
+                            <input type="radio" name="report-reason" value="spam">
+                            <span>Spam</span>
+                        </label>
+
+                        <label class="report-option">
+                            <input type="radio" name="report-reason" value="harassment">
+                            <span>Harassment</span>
+                        </label>
+
+                        <label class="report-option">
+                            <input type="radio" name="report-reason" value="inappropriate">
+                            <span>Inappropriate content</span>
+                        </label>
+
+                        <label class="report-option">
+                            <input type="radio" name="report-reason" value="misinformation">
+                            <span>False/misleading information</span>
+                        </label>
+
+                        <label class="report-option">
+                            <input type="radio" name="report-reason" value="other">
+                            <span>Other</span>
+                        </label>
+                    </fieldset>
+
+                    <div class="form-actions">
+                        <button type="button" id="cancel-report" class="btn-cancel">Cancel</button>
+                        <button type="submit" class="btn-publish" id="submit-report-btn">Submit Report</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= CONFIRM MODAL ================= -->
+    <div class="modal-overlay" id="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
+        <div class="modal-card confirm-card">
+            <div class="modal-header">
+                <h3 id="confirm-title">Are you sure?</h3>
+                <button id="close-confirm-modal" class="modal-close-btn" type="button"
+                    aria-label="Close confirm dialog">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p id="confirm-message">This action cannot be undone.</p>
+                <div class="form-actions">
+                    <button type="button" id="confirm-cancel" class="btn-cancel">Cancel</button>
+                    <button type="button" id="confirm-ok" class="btn-danger">Confirm</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST CONTAINER -->
+    <div id="toast-container" aria-live="polite"></div>
+
+    <!-- JAVASCRIPT -->
+    <script src="config.js"></script>
+    <script src="post.js"></script>
+</body>
+
+</html>

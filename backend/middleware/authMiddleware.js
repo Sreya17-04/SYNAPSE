@@ -121,4 +121,18 @@ const adminOnly = (req, res, next) => {
     });
 };
 
-module.exports = { protect, adminOnly, optionalAuth, JWT_ALGORITHM };
+/**
+ * moderatorOnly - Must be used AFTER protect middleware.
+ * Allows moderators and admins (staff); blocks students with 403.
+ */
+const moderatorOnly = (req, res, next) => {
+    if (req.user && (req.user.role === "admin" || req.user.role === "moderator")) {
+        return next();
+    }
+
+    return res.status(403).json({
+        message: "Access denied. Moderator privileges required."
+    });
+};
+
+module.exports = { protect, adminOnly, moderatorOnly, optionalAuth, JWT_ALGORITHM };

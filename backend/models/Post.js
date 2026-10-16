@@ -27,6 +27,12 @@ const commentSchema = new mongoose.Schema(
             trim: true,
             maxlength: 2000
         },
+        // Chain comments: null means a top-level comment; otherwise the id of
+        // the comment this one replies to (always within the same post).
+        parentId: {
+            type: mongoose.Schema.Types.ObjectId,
+            default: null
+        },
         // Set when a comment is edited. Absent until the first edit, so the UI
         // can distinguish "never edited" from "edited at the original time".
         editedAt: {
@@ -94,6 +100,38 @@ const postSchema = new mongoose.Schema(
             default: []
         },
 
+        // Denormalised length of `comments`, kept in sync by the pre-save
+        // hook below so the feed can project the comments array out entirely.
+        commentCount: {
+            type: Number,
+            default: 0,
+            min: 0
+        },
+
+        // Number of open (unresolved, undismissed) reports against this post.
+        // The public feed, saved list and detail endpoint hide any post with a
+        // positive count; the owner and moderators still see it. Resolving or
+        // dismissing a report decrements the counter, which makes the post
+        // visible again automatically.
+        openReportCount: {
+            type: Number,
+            default: 0,
+            min: 0
+        },
+
+        // One optional attachment per post (any file type, capped at upload
+        // time by multer). Only metadata is stored here; the bytes live under
+        // backend/uploads/ and are served from /uploads/<filename>.
+        attachment: {
+            type: {
+                filename: { type: String, default: "" },
+                originalName: { type: String, default: "" },
+                mimetype: { type: String, default: "" },
+                size: { type: Number, default: 0 }
+            },
+            default: null
+        },
+
         // Moderation
         status: {
             type: String,
@@ -106,7 +144,8 @@ const postSchema = new mongoose.Schema(
     }
 );
 
-// Keep the like counter authoritative and free of duplicates.
+// Keep the like counter authoritative and free of duplicates, and keep the
+// comment counter in step with the embedded array.
 // Mongoose 9 does not pass a `next` callback to middleware, so this
 // must be a plain (optionally async) function.
 postSchema.pre("save", function () {
@@ -128,6 +167,7 @@ postSchema.pre("save", function () {
         });
 
     this.likes = this.likedBy.length;
+    this.commentCount = Array.isArray(this.comments) ? this.comments.length : 0;
 });
 
 // Supports the public feed, trending and the admin moderation lists

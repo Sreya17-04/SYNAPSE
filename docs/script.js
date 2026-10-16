@@ -17,8 +17,8 @@ let currentUser = JSON.parse(
 let userRole = localStorage.getItem("synapse_role");
 
 // Build the sign-in URL that comes back to this exact page (view, search and
-// the shared post hash included), so opening a shared link while logged out
-// lands on that link after signing in instead of a bare index.html.
+// any hash included), so opening a shared link while logged out lands on that
+// link after signing in instead of a bare index.html.
 function loginRedirectUrl() {
     const returnTo =
         window.location.pathname +
@@ -30,19 +30,12 @@ function loginRedirectUrl() {
 
 // Clears local auth state and bounces to the login page. Wrapped in a function
 // so every caller stops executing instead of falling through with a stale UI.
-//
-// Student-only actions rely on the default behaviour, which sends an admin
-// session back to the dashboard. init() passes { allowAdmin: true } so
-// "Back to Community" can land admins on the feed instead of looping straight
-// back to admin.html.
 function requireStudentSession(options = {}) {
     if (!token || !currentUser) {
         localStorage.removeItem("synapse_token");
         localStorage.removeItem("synapse_role");
         localStorage.removeItem("synapse_user");
 
-        // replace() so Back does not return to a page that immediately
-        // redirects again.
         window.location.replace(loginRedirectUrl());
         return false;
     }
@@ -57,36 +50,36 @@ function requireStudentSession(options = {}) {
     return true;
 }
 
-// Admins reach this page from the dashboard and get a read-only copy of the
-// student feed: every composer entry point is removed, and the profile menu
-// gains an "Admin Dashboard" shortcut back to the moderation panel.
-//
-// The shortcut is gated on `serverConfirmed`: localStorage is writable by any
-// script, so the admin-only link is revealed only after /api/auth/me has
-// agreed the session really is an admin. Students never see it - it ships
-// hidden and is only un-hidden for a server-verified admin.
+function isStaffViewer() {
+    const role = userRole || currentUser?.role;
+    return role === "admin" || role === "moderator";
+}
+
+// Admins get a read-only copy of the student feed (composer hidden). Moderators
+// keep the composer - they are students with extra powers. The "Admin
+// Dashboard" shortcut appears for staff only after /api/auth/me has agreed
+// the session really carries that role (localStorage alone is not trusted).
 function applyViewerRoleUI(serverConfirmed = false) {
     const cachedAdmin =
-        userRole === "admin" ||
-        currentUser?.role === "admin";
+        userRole === "admin" || currentUser?.role === "admin";
 
-    const isAdmin = serverConfirmed && cachedAdmin;
+    const isStaffConfirmed =
+        serverConfirmed &&
+        (cachedAdmin ||
+            userRole === "moderator" ||
+            currentUser?.role === "moderator");
 
-    [createPostBtn, heroCreateBtn, quickPostTrigger].forEach((element) => {
-        if (element) {
-            element.style.display = cachedAdmin ? "none" : "";
-        }
-    });
+    if (createPostBtn) {
+        createPostBtn.style.display = cachedAdmin ? "none" : "";
+    }
 
     const dashboardItem =
         document.getElementById("menu-admin-dashboard");
 
     if (dashboardItem) {
-        dashboardItem.style.display = isAdmin ? "" : "none";
+        dashboardItem.style.display = isStaffConfirmed ? "" : "none";
     }
 
-    // Sidebar "My Posts" belongs to students; the admin copy of the feed
-    // never shows it. (The profile dropdown no longer lists it either.)
     if (navMyposts) {
         navMyposts.style.display = cachedAdmin ? "none" : "";
     }
@@ -98,12 +91,21 @@ function applyViewerRoleUI(serverConfirmed = false) {
 
 // Every 401 means the token is expired, revoked by a logout elsewhere, or the
 // account was suspended. Handle it in one place instead of per-caller.
+// FormData bodies are sent as-is so the browser can set the multipart
+// boundary; JSON bodies get the JSON content type.
 async function authFetch(url, options = {}) {
+    const isFormData =
+        typeof FormData !== "undefined" &&
+        options.body instanceof FormData;
+
     const headers = {
-        "Content-Type": "application/json",
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...(options.headers || {})
     };
+
+    if (!isFormData && !headers["Content-Type"]) {
+        headers["Content-Type"] = "application/json";
+    }
 
     const response = await fetch(url, { ...options, headers });
 
@@ -147,6 +149,33 @@ async function readError(response, fallback) {
     }
 }
 
+// Turn any failed response into a kind, specific message. Server-provided
+// messages win; common status codes get a friendly default.
+async function friendlyError(response, fallback) {
+    const serverMessage = await readError(response, "");
+
+    if (serverMessage) {
+        return serverMessage;
+    }
+
+    switch (response.status) {
+        case 401:
+            return "Your session has expired. Please log in again.";
+        case 403:
+            return "You do not have permission to do that.";
+        case 404:
+            return "That discussion no longer exists.";
+        case 409:
+            return "That action conflicts with the current state. Refresh and try again.";
+        case 413:
+            return "That file is too large. The limit is 5 MB.";
+        case 429:
+            return "You are doing that too often. Please wait a while and try again.";
+        default:
+            return fallback;
+    }
+}
+
 // =====================================================
 // DOM ELEMENTS
 // =====================================================
@@ -155,10 +184,9 @@ const postsContainer = document.getElementById("posts-container");
 
 const postModal = document.getElementById("post-modal");
 const postForm = document.getElementById("post-form");
+const postFileInput = document.getElementById("post-file");
 
 const createPostBtn = document.getElementById("create-post-btn");
-const heroCreateBtn = document.getElementById("hero-create-btn");
-const quickPostTrigger = document.getElementById("quick-post-trigger");
 
 const closeModalBtn = document.getElementById("close-modal");
 const cancelPostBtn = document.getElementById("cancel-post");
@@ -171,6 +199,13 @@ const cancelReportBtn = document.getElementById("cancel-report");
 const submitReportBtn = document.getElementById("submit-report-btn");
 const reportPostTitle = document.getElementById("report-post-title");
 
+const confirmModal = document.getElementById("confirm-modal");
+const confirmTitle = document.getElementById("confirm-title");
+const confirmMessage = document.getElementById("confirm-message");
+const confirmOkBtn = document.getElementById("confirm-ok");
+const confirmCancelBtn = document.getElementById("confirm-cancel");
+const closeConfirmModalBtn = document.getElementById("close-confirm-modal");
+
 const searchInput = document.getElementById("search-input");
 const sortSelect = document.getElementById("sort-select");
 
@@ -179,6 +214,12 @@ const themeIcon = document.getElementById("theme-icon");
 
 const profileBtn = document.getElementById("profile-btn");
 const profileDropdown = document.getElementById("profile-dropdown");
+
+const notificationBtn = document.getElementById("notification-btn");
+const notificationBadge = document.getElementById("notification-badge");
+const notificationDropdown = document.getElementById("notification-dropdown");
+const notificationList = document.getElementById("notification-list");
+const markAllReadBtn = document.getElementById("mark-all-read");
 
 const toastContainer = document.getElementById("toast-container");
 const statDiscussions = document.getElementById("stat-discussions");
@@ -303,6 +344,16 @@ function timeAgo(dateString) {
     });
 }
 
+// Permalink for one discussion. post.html carries the full description,
+// comment thread and actions; sharing copies this URL, never the whole feed.
+function postPermalink(postId) {
+    const base = window.location.origin
+        ? `${window.location.origin}${window.location.pathname.replace(/[^/]*$/, "")}`
+        : "";
+
+    return `${base}post.html?id=${encodeURIComponent(postId)}`;
+}
+
 // =====================================================
 // TOAST
 // =====================================================
@@ -338,12 +389,61 @@ function showToast(message, type = "info") {
 }
 
 // =====================================================
+// CONFIRM MODAL
+// =====================================================
+
+// In-app confirmation replacing native confirm(), so the wording and the
+// styling stay consistent with the rest of the app.
+let confirmResolve = null;
+let confirmLastFocused = null;
+
+function showConfirm(title, message, confirmLabel = "Confirm") {
+    if (!confirmModal) {
+        return Promise.resolve(
+            window.confirm(message)
+        );
+    }
+
+    confirmLastFocused = document.activeElement;
+
+    if (confirmTitle) confirmTitle.textContent = title;
+    if (confirmMessage) confirmMessage.textContent = message;
+    if (confirmOkBtn) confirmLabel && (confirmOkBtn.textContent = confirmLabel);
+
+    confirmModal.classList.add("show");
+    confirmOkBtn?.focus();
+
+    return new Promise((resolve) => {
+        confirmResolve = resolve;
+    });
+}
+
+function closeConfirm(result) {
+    if (!confirmModal?.classList.contains("show")) return;
+
+    confirmModal.classList.remove("show");
+
+    confirmResolve?.(result);
+    confirmResolve = null;
+
+    confirmLastFocused?.focus();
+}
+
+confirmOkBtn?.addEventListener("click", () => closeConfirm(true));
+confirmCancelBtn?.addEventListener("click", () => closeConfirm(false));
+closeConfirmModalBtn?.addEventListener("click", () => closeConfirm(false));
+
+confirmModal?.addEventListener("click", (event) => {
+    if (event.target === confirmModal) {
+        closeConfirm(false);
+    }
+});
+
+// =====================================================
 // THEME
 // =====================================================
 
 function setTheme(theme) {
-    // The sun/moon glyphs are both in the DOM and swapped by CSS from the
-    // body class, so nothing here has to rewrite markup.
     if (theme === "dark") {
         document.body.classList.add("dark-mode");
         localStorage.setItem("synapse_theme", "dark");
@@ -354,7 +454,6 @@ function setTheme(theme) {
 }
 
 function initTheme() {
-    // The home page loads dark unless the reader explicitly chose light.
     const savedTheme = localStorage.getItem("synapse_theme") || "dark";
 
     setTheme(savedTheme);
@@ -368,7 +467,6 @@ themeToggleBtn?.addEventListener("click", () => {
 
 initTheme();
 
-// The header only picks up a shadow once content has scrolled under it.
 const navbarEl = document.querySelector(".navbar");
 
 if (navbarEl) {
@@ -388,7 +486,6 @@ if (currentUser) {
     const nameElement = document.getElementById("profile-name");
     const emailElement = document.getElementById("profile-email");
     const initialsElement = document.getElementById("profile-initials");
-    const quickAvatar = document.getElementById("quick-avatar");
 
     const name = currentUser.name || "Student";
 
@@ -397,18 +494,12 @@ if (currentUser) {
     }
 
     if (emailElement) {
-        // Admins and legacy accounts show their email; pre-provisioned
-        // students have none, so show their registration number instead.
         emailElement.textContent =
             currentUser.email || currentUser.universityRegNo || "";
     }
 
     if (initialsElement) {
         initialsElement.textContent = getInitials(name);
-    }
-
-    if (quickAvatar) {
-        quickAvatar.textContent = getInitials(name);
     }
 }
 
@@ -420,6 +511,9 @@ profileBtn?.addEventListener("click", (event) => {
     event.stopPropagation();
 
     profileDropdown?.classList.toggle("show");
+
+    // Keep the notification panel from stacking open on top of it.
+    notificationDropdown?.classList.remove("show");
 });
 
 document.addEventListener("click", (event) => {
@@ -430,14 +524,21 @@ document.addEventListener("click", (event) => {
     ) {
         profileDropdown.classList.remove("show");
     }
+
+    if (
+        notificationDropdown &&
+        !notificationDropdown.contains(event.target) &&
+        event.target !== notificationBtn &&
+        !notificationBtn?.contains(event.target)
+    ) {
+        notificationDropdown.classList.remove("show");
+    }
 });
 
 // =====================================================
 // DEDICATED VIEW NAVIGATION
 // =====================================================
 
-// Saved Posts and My Posts are dedicated pages: navigating to their URL
-// reloads the site on that view rather than filtering the feed in place.
 function openDedicatedView(view) {
     const query = `?view=${view}`;
 
@@ -457,8 +558,6 @@ function openDedicatedView(view) {
 
 document.getElementById("menu-logout")?.addEventListener("click", async () => {
     try {
-        // Ask the server to bump tokenVersion first, so a copy of the token
-        // that survives this tab cannot be replayed until it expires.
         await fetch(`${API_URL}/api/auth/logout`, {
             method: "POST",
             headers: { Authorization: `Bearer ${token}` }
@@ -513,8 +612,6 @@ async function loadPosts() {
     try {
         renderSkeletons();
 
-        // Sent with the request so the server can mark which posts are the
-        // caller's own (the public feed no longer exposes authorEmail).
         const response = await authFetch(`${API_URL}/api/posts`);
 
         if (!response.ok) {
@@ -566,8 +663,6 @@ async function loadPosts() {
     }
 }
 
-// The hero stats were hardcoded placeholders (1,240 / 356 / 48). This reads
-// the real aggregate counts instead.
 async function loadCommunityStats() {
     try {
         const response = await fetch(`${API_URL}/api/stats`);
@@ -582,8 +677,6 @@ async function loadCommunityStats() {
             statMembers.textContent = formatCount(stats.students);
         }
 
-        // The feed endpoint is capped at 100 posts, so use the server's true
-        // total rather than allPosts.length (which saturated at 100).
         if (statDiscussions) {
             statDiscussions.textContent = formatCount(stats.discussions);
         }
@@ -604,11 +697,14 @@ function formatCount(value) {
         : String(count);
 }
 
+// Trending shows the top five with likes AND comment counts, each row a link
+// straight to the discussion's own page - no hover needed to see the numbers.
+// Re-polled on an interval so the ranking moves without a full reload.
 async function loadTopDiscussions() {
     if (!trendingList) return;
 
     try {
-        const response = await fetch(`${API_URL}/api/top-discussions`);
+        const response = await fetch(`${API_URL}/api/top-discussions?limit=5`);
 
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}`);
@@ -622,13 +718,13 @@ async function loadTopDiscussions() {
         }
 
         trendingList.innerHTML = discussions.map((discussion, index) => `
-            <div class="trending-item">
+            <a class="trending-item" href="post.html?id=${encodeURIComponent(discussion._id)}">
                 <span class="trending-rank">${String(index + 1).padStart(2, "0")}</span>
                 <div class="trending-details">
                     <h4>${escapeHTML(discussion.title)}</h4>
-                    <span>${escapeHTML(discussion.likes ?? 0)} likes</span>
+                    <span>${formatCount(discussion.likes)} likes · ${formatCount(discussion.commentCount)} comments</span>
                 </div>
-            </div>
+            </a>
         `).join("");
     } catch (error) {
         console.error("Error loading top discussions:", error);
@@ -636,6 +732,8 @@ async function loadTopDiscussions() {
     }
 }
 
+// The sidebar shows only the three most recent so one long announcement
+// cannot push everything else below the fold.
 async function loadAnnouncements() {
     if (!announcementsList) return;
 
@@ -653,7 +751,10 @@ async function loadAnnouncements() {
             return;
         }
 
-        announcementsList.innerHTML = announcements.map(announcement => `
+        const recent = announcements.slice(0, 3);
+        const extra = announcements.length - recent.length;
+
+        announcementsList.innerHTML = recent.map(announcement => `
             <div class="announcement-item">
                 <p><strong>${escapeHTML(announcement.title)}</strong><br>${escapeHTML(announcement.message)}</p>
                 <span>${new Date(announcement.createdAt).toLocaleDateString("en-IN", {
@@ -662,22 +763,158 @@ async function loadAnnouncements() {
                     year: "numeric"
                 })}</span>
             </div>
-        `).join("");
+        `).join("") + (extra > 0
+            ? `<p class="announcement-more">+${extra} more announcement${extra === 1 ? "" : "s"}</p>`
+            : "");
     } catch (error) {
         console.error("Error loading announcements:", error);
         announcementsList.innerHTML = "<div class=\"announcement-item\">Unable to load announcements.</div>";
     }
 }
 
+// Widget polling: keeps trending, announcements and hero stats fresh without
+// a full feed reload. Started once the first load has finished.
+let widgetPollTimer = null;
+
+function startWidgetPolling() {
+    if (widgetPollTimer) return;
+
+    widgetPollTimer = window.setInterval(() => {
+        loadTopDiscussions();
+        loadCommunityStats();
+    }, 60000);
+}
+
+// =====================================================
+// NOTIFICATIONS
+// =====================================================
+
+async function loadUnreadCount() {
+    if (!token || !notificationBadge) return;
+
+    try {
+        const response = await authFetch(
+            `${API_URL}/api/notifications/unread-count`
+        );
+
+        if (!response.ok) return;
+
+        const data = await response.json();
+        const count = Number(data.unreadCount) || 0;
+
+        if (count > 0) {
+            notificationBadge.textContent = count > 99 ? "99+" : String(count);
+            notificationBadge.classList.remove("is-hidden");
+        } else {
+            notificationBadge.classList.add("is-hidden");
+        }
+    } catch (error) {
+        if (error.message.startsWith("Session expired")) return;
+        // Silent: the badge is a nice-to-have, not a blocker.
+    }
+}
+
+async function loadNotifications() {
+    if (!token || !notificationList) return;
+
+    try {
+        const response = await authFetch(
+            `${API_URL}/api/notifications?limit=15`
+        );
+
+        if (!response.ok) return;
+
+        const data = await response.json();
+        const items = data.notifications || [];
+
+        if (!items.length) {
+            notificationList.innerHTML =
+                '<p class="notification-empty">No notifications yet.</p>';
+            return;
+        }
+
+        notificationList.innerHTML = items.map((item) => `
+            <button class="notification-item ${item.read ? "" : "unread"}"
+                type="button" data-id="${escapeHTML(item._id)}"
+                data-link="${escapeHTML(item.link || "")}">
+                <strong>${escapeHTML(item.title)}</strong>
+                <p>${escapeHTML(item.message)}</p>
+                <span>${escapeHTML(timeAgo(item.createdAt))}</span>
+            </button>
+        `).join("");
+
+        notificationList
+            .querySelectorAll(".notification-item")
+            .forEach((button) => {
+                button.addEventListener("click", () => {
+                    openNotification(button.dataset.id, button.dataset.link);
+                });
+            });
+    } catch (error) {
+        if (error.message.startsWith("Session expired")) return;
+        console.error("Error loading notifications:", error);
+    }
+}
+
+async function openNotification(id, link) {
+    try {
+        if (id) {
+            await authFetch(
+                `${API_URL}/api/notifications/${encodeURIComponent(id)}/read`,
+                { method: "PATCH" }
+            );
+        }
+    } catch {
+        // Navigation should still happen even if the read-mark fails.
+    }
+
+    notificationDropdown?.classList.remove("show");
+    loadUnreadCount();
+
+    if (link) {
+        // Only same-origin relative links are followed.
+        if (/^[a-z0-9./?=&_-]+$/i.test(link)) {
+            window.location.href = link;
+        }
+    }
+}
+
+notificationBtn?.addEventListener("click", (event) => {
+    event.stopPropagation();
+
+    if (!token) return;
+
+    notificationDropdown?.classList.toggle("show");
+    profileDropdown?.classList.remove("show");
+
+    if (notificationDropdown?.classList.contains("show")) {
+        loadNotifications();
+    }
+});
+
+markAllReadBtn?.addEventListener("click", async () => {
+    if (!token) return;
+
+    try {
+        await authFetch(
+            `${API_URL}/api/notifications/read-all`,
+            { method: "PATCH" }
+        );
+
+        notificationBadge?.classList.add("is-hidden");
+        await loadNotifications();
+    } catch (error) {
+        if (error.message.startsWith("Session expired")) return;
+        showToast("Could not update notifications.", "error");
+    }
+});
+
 // =====================================================
 // FEED SUBTITLE
 // =====================================================
 
-// #feed-subtitle existed in the markup but was never written to, so it always
-// showed its static placeholder regardless of filters.
 const VIEW_LABELS = {
     home: "Latest discussions",
-    explore: "Most liked discussions",
     saved: "Your saved discussions",
     myposts: "Your discussions"
 };
@@ -705,13 +942,27 @@ function updateFeedSubtitle(count) {
 // DISPLAY POSTS
 // =====================================================
 
-function displayPosts() {    if (!postsContainer) return;
+function displayPosts() {
+    if (!postsContainer) return;
 
     let posts = [...allPosts];
 
     const savedIds = JSON.parse(
         localStorage.getItem(SAVED_KEY) || "[]"
     );
+
+    // Home and Saved show only publicly visible posts. My Posts keeps the
+    // author's own flagged / under-review posts, badged, so moderation never
+    // makes content silently disappear for its owner.
+    if (activeView !== "myposts") {
+        posts = posts.filter(
+            (post) =>
+                !(
+                    post.isOwner &&
+                    (post.status === "flagged" || post.isUnderReview)
+                )
+        );
+    }
 
     // View filter
     if (activeView === "saved") {
@@ -721,7 +972,6 @@ function displayPosts() {    if (!postsContainer) return;
     }
 
     if (activeView === "myposts") {
-        // isOwner is computed server-side now that authorEmail is not public.
         posts = posts.filter(post => post.isOwner);
     }
 
@@ -744,16 +994,13 @@ function displayPosts() {    if (!postsContainer) return;
         );
     }
 
-    // Sort. "explore" is a real view, not an alias for home: it ranks by
-    // engagement instead of recency so the button does something.
-    const effectiveSort = activeView === "explore" ? "popular" : currentSort;
-
+    // Sort
     posts.sort((a, b) => {
-        if (effectiveSort === "oldest") {
+        if (currentSort === "oldest") {
             return new Date(a.createdAt) - new Date(b.createdAt);
         }
 
-        if (effectiveSort === "popular") {
+        if (currentSort === "popular") {
             return (b.likes || 0) - (a.likes || 0);
         }
 
@@ -782,6 +1029,11 @@ function displayPosts() {    if (!postsContainer) return;
             message = "Try a different search term.";
         }
 
+        const showCreate =
+            !isStaffViewer() &&
+            !currentSearch.trim() &&
+            activeView !== "saved";
+
         postsContainer.innerHTML = `
             <div class="empty-state">
                 <div class="empty-icon">
@@ -790,14 +1042,18 @@ function displayPosts() {    if (!postsContainer) return;
                 <h3>${title}</h3>
                 <p>${message}</p>
 
-                <button
-                    class="btn-create-post-banner mt-1"
-                    id="empty-create-btn"
-                    type="button"
-                >
-                    <svg class="icon" aria-hidden="true"><use href="#i-plus"></use></svg>
-                    Create Post
-                </button>
+                ${showCreate
+                    ? `
+                        <button
+                            class="btn-create-post-banner mt-1"
+                            id="empty-create-btn"
+                            type="button"
+                        >
+                            <svg class="icon" aria-hidden="true"><use href="#i-plus"></use></svg>
+                            Create Post
+                        </button>
+                    `
+                    : ""}
             </div>
         `;
 
@@ -823,15 +1079,26 @@ function renderPostCard(post, savedIds) {
     const isSaved = savedIds.includes(post._id);
 
     const likeCount = post.likes || 0;
-    const commentCount = (post.comments || []).length;
+    const commentCount =
+        typeof post.commentCount === "number"
+            ? post.commentCount
+            : (post.comments || []).length;
 
-    // Server-computed: the public feed no longer exposes authorEmail.
     const isMyPost = Boolean(post.isOwner);
+
+    const isFlagged = post.status === "flagged";
+    const isUnderReview = Boolean(post.isUnderReview) && !isFlagged;
 
     const card = document.createElement("article");
 
     card.className = "post-card";
     card.dataset.postId = post._id;
+
+    const statusChips = isFlagged
+        ? '<span class="status-chip flagged">Flagged</span>'
+        : isUnderReview
+            ? '<span class="status-chip under-review">Under review</span>'
+            : "";
 
     card.innerHTML = `
         <div class="post-header">
@@ -859,30 +1126,32 @@ function renderPostCard(post, savedIds) {
                     ${escapeHTML(post.category)}
                 </span>
 
-                ${isMyPost
-            ? `
-                            <button
-                                class="action-btn delete-post-btn"
-                                data-id="${post._id}"
-                                type="button"
-                                title="Delete post"
-                                aria-label="Delete your post ${escapeHTML(post.title)}"
-                            >
-                                ${ICONS.trash}
-                            </button>
-                        `
-            : ""
-        }
+                ${statusChips}
 
+                ${isMyPost
+                    ? `
+                        <button
+                            class="action-btn delete-post-btn"
+                            data-id="${post._id}"
+                            type="button"
+                            title="Delete post"
+                            aria-label="Delete your post ${escapeHTML(post.title)}"
+                        >
+                            ${ICONS.trash}
+                        </button>
+                    `
+                    : ""}
             </div>
         </div>
 
         <div class="post-body">
-            <h3>${escapeHTML(post.title)}</h3>
+            <h3><a class="post-title-link" href="post.html?id=${encodeURIComponent(post._id)}">${escapeHTML(post.title)}</a></h3>
 
             <p class="post-content-text">
                 ${escapeHTML(post.content)}
             </p>
+
+            ${renderAttachmentPreview(post.attachment)}
         </div>
 
         <div class="post-footer">
@@ -902,18 +1171,14 @@ function renderPostCard(post, savedIds) {
                     </span>
                 </button>
 
-                <button
-                    class="action-btn comment-btn"
-                    data-id="${post._id}"
-                    type="button"
-                    aria-label="Show ${commentCount} comments"
-                    aria-expanded="false"
-                >
+                <a class="action-btn comment-btn"
+                    href="post.html?id=${encodeURIComponent(post._id)}#comments"
+                    aria-label="View ${commentCount} comments">
                     ${ICONS.comment}
                     <span>
                         ${commentCount}
                     </span>
-                </button>
+                </a>
 
             </div>
 
@@ -942,41 +1207,6 @@ function renderPostCard(post, savedIds) {
             </div>
 
         </div>
-
-        <div
-            class="comment-drawer is-hidden"
-            id="drawer-${post._id}"
-        >
-
-            <div
-                class="comments-list"
-                id="comments-${post._id}"
-            >
-                ${renderComments(post.comments || [])}
-            </div>
-
-            <div class="comment-input-box">
-
-                <input
-                    type="text"
-                    class="comment-input"
-                    id="comment-input-${post._id}"
-                    placeholder="Write a comment..."
-                    aria-label="Write a comment"
-                >
-
-                <button
-                    type="button"
-                    class="btn-submit-comment"
-                    data-id="${post._id}"
-                    aria-label="Post your comment"
-                >
-                    Post
-                </button>
-
-            </div>
-
-        </div>
     `;
 
     // Like
@@ -984,60 +1214,6 @@ function renderPostCard(post, savedIds) {
         .querySelector(".like-btn")
         ?.addEventListener("click", () => {
             toggleLike(post._id, card.querySelector(".like-btn"));
-        });
-
-    // Comments
-    card
-        .querySelector(".comment-btn")
-        ?.addEventListener("click", () => {
-            const drawer = document.getElementById(
-                `drawer-${post._id}`
-            );
-
-            if (!drawer) return;
-
-            // The hidden state can come from the .is-hidden CSS class (fresh
-            // render) or from an inline style (after an earlier toggle).
-            // Reading drawer.style.display alone misses the class-based case,
-            // so the first click used to do nothing. Use the computed style.
-            const isHidden =
-                window.getComputedStyle(drawer).display === "none";
-
-            drawer.style.display = isHidden
-                ? "block"
-                : "none";
-
-            drawer.classList.toggle("is-hidden", !isHidden);
-
-            card
-                .querySelector(".comment-btn")
-                ?.setAttribute(
-                    "aria-expanded",
-                    isHidden ? "true" : "false"
-                );
-
-            if (isHidden) {
-                drawer
-                    .querySelector(".comment-input")
-                    ?.focus();
-            }
-        });
-
-    // Submit comment
-    card
-        .querySelector(".btn-submit-comment")
-        ?.addEventListener("click", () => {
-            submitComment(post._id, card);
-        });
-
-    // Enter comment
-    card
-        .querySelector(".comment-input")
-        ?.addEventListener("keydown", event => {
-            if (event.key === "Enter") {
-                event.preventDefault();
-                submitComment(post._id, card);
-            }
         });
 
     // Save
@@ -1071,42 +1247,31 @@ function renderPostCard(post, savedIds) {
     postsContainer.appendChild(card);
 }
 
-// =====================================================
-// COMMENTS
-// =====================================================
+// Image attachments render as a thumbnail; every other type renders as a
+// labelled file chip that opens in a new tab.
+function renderAttachmentPreview(attachment) {
+    if (!attachment || !attachment.filename) {
+        return "";
+    }
 
-function renderComments(comments) {
-    if (!comments || comments.length === 0) {
+    const href = `uploads/${encodeURIComponent(attachment.filename)}`;
+    const name = escapeHTML(attachment.originalName || "attachment");
+    const isImage = String(attachment.mimetype || "").startsWith("image/");
+
+    if (isImage) {
         return `
-            <p class="comment-empty">
-                No comments yet. Be the first!
-            </p>
+            <a class="post-attachment-image" href="${href}" target="_blank" rel="noopener noreferrer">
+                <img src="${href}" alt="${name}" loading="lazy">
+            </a>
         `;
     }
 
-    return comments
-        .map(comment => `
-            <div class="comment-item">
-
-            <div class="comment-avatar">
-                ${escapeHTML(getInitials(comment.author))}
-            </div>
-
-                <div class="comment-content-wrap">
-
-                    <strong>
-                        ${escapeHTML(comment.author)}
-                    </strong>
-
-                    <p>
-                        ${escapeHTML(comment.text)}
-                    </p>
-
-                </div>
-
-            </div>
-        `)
-        .join("");
+    return `
+        <a class="post-attachment-file" href="${href}" target="_blank" rel="noopener noreferrer">
+            <svg class="icon" aria-hidden="true"><use href="#i-doc"></use></svg>
+            <span>${name}</span>
+        </a>
+    `;
 }
 
 // =====================================================
@@ -1124,7 +1289,7 @@ async function toggleLike(postId, button) {
 
         if (!response.ok) {
             showToast(
-                await readError(
+                await friendlyError(
                     response,
                     "Could not update like."
                 ),
@@ -1136,23 +1301,13 @@ async function toggleLike(postId, button) {
 
         const data = await response.json();
 
-        if (data.liked) {
-            button.classList.add("liked");
-            button.innerHTML = `
-                ${ICONS.heart}
-                <span class="like-count">
-                    ${escapeHTML(data.likes)}
-                </span>
-            `;
-        } else {
-            button.classList.remove("liked");
-            button.innerHTML = `
-                ${ICONS.heart}
-                <span class="like-count">
-                    ${escapeHTML(data.likes)}
-                </span>
-            `;
-        }
+        button.classList.toggle("liked", Boolean(data.liked));
+        button.innerHTML = `
+            ${ICONS.heart}
+            <span class="like-count">
+                ${escapeHTML(data.likes)}
+            </span>
+        `;
 
         button.setAttribute(
             "aria-pressed",
@@ -1167,128 +1322,16 @@ async function toggleLike(postId, button) {
             post.likes = data.likes;
         }
 
+        // A like can change the trending order; refresh it in the background.
+        loadTopDiscussions();
+
     } catch (error) {
         if (error.message.startsWith("Session expired")) {
             return;
         }
 
         console.error("Like error:", error);
-        showToast("Could not update like.", "error");
-    }
-}
-
-// =====================================================
-// COMMENT
-// =====================================================
-
-async function submitComment(postId, card) {
-    const input = card.querySelector(".comment-input");
-
-    if (!input) return;
-
-    const text = input.value.trim();
-
-    if (!text) return;
-
-    const button = card.querySelector(
-        ".btn-submit-comment"
-    );
-
-    button.disabled = true;
-    button.textContent = "Posting...";
-
-    try {
-        const response = await authFetch(
-            `${API_URL}/api/posts/${postId}/comment`,
-            {
-                method: "POST",
-                body: JSON.stringify({ text })
-            }
-        );
-
-        if (!response.ok) {
-            showToast(
-                await readError(
-                    response,
-                    "Failed to post comment."
-                ),
-                "error"
-            );
-
-            return;
-        }
-
-        const data = await response.json();
-
-        const commentsList = card.querySelector(
-            ".comments-list"
-        );
-
-        if (commentsList) {
-            const noComments = commentsList.querySelector("p");
-
-            if (noComments) {
-                commentsList.innerHTML = "";
-            }
-
-            const comment = document.createElement("div");
-
-            comment.className = "comment-item";
-
-            comment.innerHTML = `
-                <div class="comment-avatar">
-                    ${escapeHTML(getInitials(data.comment.author))}
-                </div>
-
-                <div class="comment-content-wrap">
-                    <strong>
-                        ${escapeHTML(data.comment.author)}
-                    </strong>
-
-                    <p>
-                        ${escapeHTML(data.comment.text)}
-                    </p>
-                </div>
-            `;
-
-            commentsList.appendChild(comment);
-        }
-
-        const post = allPosts.find(
-            item => item._id === postId
-        );
-
-        if (post) {
-            post.comments = post.comments || [];
-            post.comments.push(data.comment);
-
-            const commentButton =
-                card.querySelector(".comment-btn");
-
-            if (commentButton) {
-                commentButton.innerHTML = `
-                    ${ICONS.comment}
-                    <span>
-                        ${post.comments.length}
-                    </span>
-                `;
-            }
-        }
-
-        input.value = "";
-
-        showToast("Comment posted!", "success");
-
-    } catch (error) {
-        if (error.message.startsWith("Session expired")) {
-            return;
-        }
-
-        console.error("Comment error:", error);
-        showToast("Failed to post comment.", "error");
-    } finally {
-        button.disabled = false;
-        button.textContent = "Post";
+        showToast("Could not update like. Please try again.", "error");
     }
 }
 
@@ -1330,18 +1373,14 @@ function toggleSave(postId) {
 // =====================================================
 
 async function sharePost(post) {
-    // Deep-link to the post instead of sharing the generic feed URL, so the
-    // recipient lands on the right discussion. Any search/query the reader
-    // happens to have is stripped so the link opens only that post.
-    const shareUrl = new URL(window.location.href);
-
-    shareUrl.search = "";
-    shareUrl.hash = `post-${post._id}`;
+    // The shared URL opens the discussion's own page - description, comments
+    // and all - never the whole feed.
+    const shareUrl = postPermalink(post._id);
 
     const shareData = {
         title: post.title,
         text: `${post.title} — SYNAPSE`,
-        url: shareUrl.toString()
+        url: shareUrl
     };
 
     if (navigator.share) {
@@ -1349,8 +1388,6 @@ async function sharePost(post) {
             await navigator.share(shareData);
             return;
         } catch (error) {
-            // Share sheet dismissed: do not silently fall through to the
-            // clipboard, that would copy a link the reader never asked for.
             if (error && error.name === "AbortError") {
                 return;
             }
@@ -1358,9 +1395,7 @@ async function sharePost(post) {
     }
 
     try {
-        await navigator.clipboard.writeText(
-            shareUrl.toString()
-        );
+        await navigator.clipboard.writeText(shareUrl);
 
         showToast(
             "Link copied to clipboard!",
@@ -1376,125 +1411,26 @@ async function sharePost(post) {
 }
 
 // =====================================================
-// SHARED LINK DEEP REVEAL
+// LEGACY SHARED-LINK REDIRECT
 // =====================================================
 
-// Shared links look like index.html#post-<objectId>.
+// Older shares look like index.html#post-<objectId>. Send them to the
+// discussion's own page instead of scrolling the feed.
 const SHARED_POST_HASH = /^#post-([0-9a-f]{24})$/i;
 
-function getSharedPostId() {
+(function redirectLegacySharedPost() {
     const match = SHARED_POST_HASH.exec(window.location.hash || "");
 
-    return match ? match[1] : null;
-}
-
-// Drop the hash without reloading, so a dead link does not keep failing on
-// every navigation.
-function clearSharedPostHash() {
-    window.history.replaceState(
-        null,
-        "",
-        `${window.location.pathname}${window.location.search}`
-    );
-}
-
-// The shared card has to be visible whatever view, category or search the
-// reader had active, so start from the plain home feed first.
-function resetFeedForSharedPost() {
-    setActiveNav(navHome, "home");
-
-    if (searchInput && searchInput.value) {
-        searchInput.value = "";
-        currentSearch = "";
-        displayPosts();
+    if (match) {
+        window.location.replace(`post.html?id=${match[1]}`);
     }
-}
+})();
 
-async function revealSharedPost() {
-    const postId = getSharedPostId();
-
-    if (!postId) {
-        return false;
-    }
-
-    resetFeedForSharedPost();
-
-    let post = allPosts.find(item => item._id === postId);
-    let failure = null;
-
-    // Older than the feed cap or not in the loaded page: ask the API for that
-    // one post instead of failing the whole link.
-    if (!post) {
-        try {
-            const response = await authFetch(
-                `${API_URL}/api/posts/${postId}`
-            );
-
-            if (response.ok) {
-                post = await response.json();
-
-                allPosts = [
-                    post,
-                    ...allPosts.filter(item => item._id !== post._id)
-                ];
-
-                displayPosts();
-            } else if (response.status === 404) {
-                failure = "That discussion is no longer available.";
-            } else {
-                failure = await readError(
-                    response,
-                    "Could not open that discussion."
-                );
-            }
-        } catch (error) {
-            if (error.message.startsWith("Session expired")) {
-                return false;
-            }
-
-            failure = "Could not open that discussion.";
-        }
-    }
-
-    if (!post) {
-        showToast(
-            failure || "That discussion is no longer available.",
-            "error"
-        );
-
-        clearSharedPostHash();
-        return false;
-    }
-
-    const card = postsContainer?.querySelector(
-        `[data-post-id="${postId}"]`
-    );
-
-    if (!card) {
-        clearSharedPostHash();
-        return false;
-    }
-
-    card.classList.add("is-shared");
-    card.scrollIntoView({
-        behavior: "smooth",
-        block: "center"
-    });
-
-    window.setTimeout(() => {
-        card.classList.remove("is-shared");
-    }, 6000);
-
-    showToast("Showing the shared discussion.", "info");
-
-    return true;
-}
-
-// Pasting a shared link into an open tab, or following one from the address
-// bar, changes only the hash - no reload happens.
 window.addEventListener("hashchange", () => {
-    if (getSharedPostId()) {
-        revealSharedPost();
+    const match = SHARED_POST_HASH.exec(window.location.hash || "");
+
+    if (match) {
+        window.location.replace(`post.html?id=${match[1]}`);
     }
 });
 
@@ -1507,13 +1443,15 @@ async function deletePost(postId) {
         item => item._id === postId
     );
 
-    const title = post?.title || "this post";
+    const title = post?.title || "this discussion";
 
-    if (
-        !confirm(
-            `Delete "${title}"?\n\nThis cannot be undone.`
-        )
-    ) {
+    const confirmed = await showConfirm(
+        "Delete this discussion?",
+        `“${title}” will be removed for everyone. This cannot be undone.`,
+        "Delete"
+    );
+
+    if (!confirmed) {
         return;
     }
 
@@ -1527,9 +1465,9 @@ async function deletePost(postId) {
 
         if (!response.ok) {
             throw new Error(
-                await readError(
+                await friendlyError(
                     response,
-                    "Failed to delete post"
+                    "Could not delete this discussion."
                 )
             );
         }
@@ -1539,9 +1477,11 @@ async function deletePost(postId) {
         );
 
         displayPosts();
+        loadTopDiscussions();
+        loadCommunityStats();
 
         showToast(
-            "Post deleted successfully.",
+            "Discussion deleted.",
             "success"
         );
 
@@ -1553,7 +1493,7 @@ async function deletePost(postId) {
         console.error("Delete error:", error);
 
         showToast(
-            error.message || "Failed to delete post.",
+            error.message || "Could not delete this discussion.",
             "error"
         );
     }
@@ -1563,18 +1503,11 @@ async function deletePost(postId) {
 // REPORT POST
 // =====================================================
 
-// Offered only to a signed-in student, never on their own post.
-// requireStudentSession() re-checks this when the dialog opens, so a stale or
-// hand-edited session cannot reach the endpoint.
 function canReportPost(post) {
-    const isAdmin =
-        userRole === "admin" ||
-        currentUser?.role === "admin";
-
     return Boolean(
         token &&
         currentUser &&
-        !isAdmin &&
+        !isStaffViewer() &&
         !post.isOwner
     );
 }
@@ -1607,7 +1540,6 @@ function reportButtonHTML(post) {
     `;
 }
 
-// Back to an untouched state: no reason selected, no leftover highlight.
 function resetReportForm() {
     reportForm?.reset();
 
@@ -1634,7 +1566,6 @@ function openReportModal(post) {
 
     resetReportForm();
 
-    // textContent, not innerHTML: the title is user-authored.
     if (reportPostTitle) {
         reportPostTitle.textContent =
             post.title || "Untitled post";
@@ -1664,8 +1595,6 @@ async function submitReport(event) {
 
     const postId = reportTargetPostId;
 
-    // reportInFlight stops a double click or an impatient Enter from filing
-    // the same report twice while the first request is still running.
     if (!postId || reportInFlight) return;
 
     const selectedReason = reportForm?.querySelector(
@@ -1704,17 +1633,14 @@ async function submitReport(event) {
             }
         );
 
-        // Already reported from another tab or device: mark it reported here
-        // too instead of leaving the same button to keep failing.
         if (response.status === 409) {
             reportedPostIds.add(postId);
 
-            // Only close if the dialog still belongs to this post.
             if (reportTargetPostId === postId) {
                 closeReportModal();
             }
 
-            displayPosts();
+            loadPosts();
 
             showToast(
                 await readError(
@@ -1729,9 +1655,9 @@ async function submitReport(event) {
 
         if (!response.ok) {
             throw new Error(
-                await readError(
+                await friendlyError(
                     response,
-                    "Failed to submit report"
+                    "Failed to submit report."
                 )
             );
         }
@@ -1744,11 +1670,12 @@ async function submitReport(event) {
             closeReportModal();
         }
 
-        displayPosts();
+        // The reported post is hidden from the public feed now, so reload.
+        loadPosts();
 
         showToast(
             data.message ||
-            "Report submitted. A moderator will review it.",
+            "Report submitted. This discussion is hidden while a moderator reviews it.",
             "success"
         );
 
@@ -1774,8 +1701,6 @@ async function submitReport(event) {
     }
 }
 
-// Highlight the selected reason. form.reset() does not fire change, so the
-// classes are cleared explicitly in resetReportForm().
 reportForm?.addEventListener("change", () => {
     reportForm
         .querySelectorAll(".report-option")
@@ -1902,7 +1827,6 @@ function setActiveNav(element, view) {
 
     displayPosts();
 
-    // Scroll to feed
     document
         .querySelector(".feed-container")
         ?.scrollIntoView({
@@ -1911,8 +1835,6 @@ function setActiveNav(element, view) {
         });
 }
 
-// Home Feed drops back to the plain URL when the reader is on one of the
-// dedicated views, so the address bar always matches what is on screen.
 navHome?.addEventListener("click", () => {
     if (activeView !== "home") {
         window.location.href = "index.html";
@@ -1930,12 +1852,6 @@ navMyposts?.addEventListener("click", () => {
     openDedicatedView("myposts");
 });
 
-// =====================================================
-// DEDICATED VIEW LANDING STATE
-// =====================================================
-
-// The markup ships with Home Feed highlighted; fix the highlight and the
-// document title when the page loaded on ?view=saved / ?view=myposts.
 if (activeView !== "home") {
     [navHome, navSaved, navMyposts].forEach((button) => {
         button?.classList.remove("active");
@@ -1957,8 +1873,6 @@ if (activeView !== "home") {
 // HERO EXPLORE BUTTON
 // =====================================================
 
-// "Explore" was only a popular-sorted copy of the same feed, so the hero
-// button lands on the home feed instead of a second, duplicate view.
 heroExploreBtn?.addEventListener("click", () => {
     if (activeView !== "home") {
         window.location.href = "index.html";
@@ -1966,15 +1880,19 @@ heroExploreBtn?.addEventListener("click", () => {
     }
 
     setActiveNav(navHome, "home");
+
+    document
+        .querySelector(".feed-container")
+        ?.scrollIntoView({
+            behavior: "smooth",
+            block: "start"
+        });
 });
 
 // =====================================================
 // CREATE POST MODAL
 // =====================================================
 
-// The modal declared aria-modal="true" but never trapped focus, so Tab
-// walked out into the inert page behind it. Track the trigger so focus can
-// be restored on close.
 let lastFocusedElement = null;
 
 const FOCUSABLE_SELECTOR =
@@ -1999,6 +1917,12 @@ function closeModal() {
 
     postForm?.reset();
 
+    if (postFileInput) {
+        postFileInput.value = "";
+    }
+
+    updateFileHint();
+
     lastFocusedElement?.focus();
 }
 
@@ -2007,8 +1931,7 @@ function trapModalFocus(event) {
         return;
     }
 
-    // Only one dialog is ever open; trap Tab inside whichever it is.
-    const openDialog = [postModal, reportModal].find(
+    const openDialog = [postModal, reportModal, confirmModal].find(
         modal => modal?.classList.contains("show")
     );
 
@@ -2043,29 +1966,6 @@ createPostBtn?.addEventListener(
     openModal
 );
 
-heroCreateBtn?.addEventListener(
-    "click",
-    openModal
-);
-
-quickPostTrigger?.addEventListener(
-    "click",
-    openModal
-);
-
-quickPostTrigger?.addEventListener(
-    "keydown",
-    event => {
-        if (
-            event.key === "Enter" ||
-            event.key === " "
-        ) {
-            event.preventDefault();
-            openModal();
-        }
-    }
-);
-
 closeModalBtn?.addEventListener(
     "click",
     closeModal
@@ -2091,12 +1991,41 @@ document.addEventListener(
         if (event.key === "Escape") {
             closeModal();
             closeReportModal();
+            closeConfirm(false);
             return;
         }
 
         trapModalFocus(event);
     }
 );
+
+// =====================================================
+// FILE ATTACHMENT
+// =====================================================
+
+const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
+
+function updateFileHint() {
+    const hint = document.querySelector(".form-hint");
+
+    if (!hint) return;
+
+    const file = postFileInput?.files?.[0];
+
+    if (!file) {
+        hint.textContent =
+            "Any file up to 5 MB. Images show a preview on the post.";
+        hint.classList.remove("error");
+        return;
+    }
+
+    const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
+
+    hint.textContent = `${file.name} · ${sizeMb} MB`;
+    hint.classList.toggle("error", file.size > MAX_UPLOAD_BYTES);
+}
+
+postFileInput?.addEventListener("change", updateFileHint);
 
 // =====================================================
 // CREATE POST
@@ -2131,35 +2060,46 @@ postForm?.addEventListener(
             return;
         }
 
+        const file = postFileInput?.files?.[0];
+
+        if (file && file.size > MAX_UPLOAD_BYTES) {
+            showToast(
+                "That file is over 5 MB. Please choose a smaller file.",
+                "error"
+            );
+            return;
+        }
+
         publishButton.disabled = true;
         publishButton.textContent =
             "Publishing...";
 
         try {
+            // FormData so an optional attachment rides along; without a file
+            // the request is still multipart, which the API accepts.
+            const formData = new FormData();
+
+            formData.append("title", title);
+            formData.append("category", category);
+            formData.append("content", content);
+
+            if (file) {
+                formData.append("attachment", file);
+            }
 
             const response = await authFetch(
                 `${API_URL}/api/posts`,
                 {
                     method: "POST",
-                    body: JSON.stringify({
-                        title,
-                        category,
-                        content
-                    })
+                    body: formData
                 }
             );
 
-            if (response.status === 401) {
-                handleSessionExpired();
-
-                return;
-            }
-
             if (!response.ok) {
                 throw new Error(
-                    await readError(
+                    await friendlyError(
                         response,
-                        "Failed to publish post"
+                        "Could not publish your post."
                     )
                 );
             }
@@ -2186,7 +2126,7 @@ postForm?.addEventListener(
 
             showToast(
                 error.message ||
-                "Failed to publish post.",
+                "Could not publish your post.",
                 "error"
             );
 
@@ -2203,15 +2143,11 @@ postForm?.addEventListener(
 // INITIALIZE
 // =====================================================
 
-// Validate the cached token against the server before rendering. Previously
-// the page only checked that the keys existed in localStorage, so an expired
-// 7-day token left a fully populated UI on screen until the first write failed.
 (async function init() {
     if (!requireStudentSession({ allowAdmin: true })) {
         return;
     }
 
-    // Cached role first so an admin never sees the composer flash on screen.
     applyViewerRoleUI();
 
     try {
@@ -2219,8 +2155,6 @@ postForm?.addEventListener(
 
         const data = await response.json();
 
-        // Trust the server's copy of the role over localStorage, which is
-        // user-writable and could claim admin.
         currentUser = data.user;
         userRole = data.user.role;
 
@@ -2230,8 +2164,6 @@ postForm?.addEventListener(
         );
         localStorage.setItem("synapse_role", userRole);
 
-        // Only now is the role server-verified, so only now may the
-        // admin-only "Admin Dashboard" shortcut appear.
         applyViewerRoleUI(true);
 
     } catch (error) {
@@ -2244,7 +2176,10 @@ postForm?.addEventListener(
 
     await loadPosts();
 
-    // Shared links carry the target post in the hash; reveal it once the feed
-    // is in place.
-    await revealSharedPost();
+    // Notifications: first paint now, then keep the badge warm.
+    loadUnreadCount();
+    window.setInterval(loadUnreadCount, 60000);
+
+    // Trending / stats keep moving without a manual refresh.
+    startWidgetPolling();
 })();

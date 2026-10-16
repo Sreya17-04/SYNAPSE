@@ -4,8 +4,10 @@ const Post = require("../models/Post");
 const Announcement = require("../models/Announcement");
 const Report = require("../models/Report");
 const AuditLog = require("../models/AuditLog");
-const { protect, adminOnly } = require("../middleware/authMiddleware");
+const Notification = require("../models/Notification");
+const { protect, adminOnly, moderatorOnly } = require("../middleware/authMiddleware");
 const { validateObjectId } = require("../middleware/validateObjectId");
+const { removeUpload } = require("../utils/uploads");
 
 const router = express.Router();
 
@@ -17,9 +19,9 @@ const identityOf = User.identityOf;
 // password), always the original casing.
 const displayId = (user) => user.email || user.universityRegNo || "unknown";
 
-// All routes in this file require: protect + adminOnly
-// Students hitting any route here get 403 Forbidden
-router.use(protect, adminOnly);
+// Every route in this file requires a session; individual groups below then
+// require moderator staff (moderators + admins) or full admin rights.
+router.use(protect);
 
 // Malformed ids get a 400 instead of a CastError 500
 router.param("id", validateObjectId("id"));
@@ -42,6 +44,25 @@ const readPaging = (query) => {
 };
 
 // ==========================================
+// Moderator-visible routes: dashboard, posts, reports, audit log.
+// Express treats a non-function argument after the path as another handler,
+// so the paths travel as one array rather than as separate strings.
+// ==========================================
+router.use(
+    ["/stats", "/posts", "/reports", "/audit-log"],
+    moderatorOnly
+);
+
+// ==========================================
+// Admin-only routes: user management, announcements, moderator roster.
+// Declared before the generic :id patterns so the static paths always win.
+// ==========================================
+router.use(
+    ["/users", "/announcements", "/moderators"],
+    adminOnly
+);
+
+// ==========================================
 // GET /api/admin/stats
 // Dashboard statistics
 // ==========================================
@@ -50,15 +71,24 @@ router.get("/stats", async (req, res) => {
         const totalUsers = await User.countDocuments({ role: "student" });
         const totalPosts = await Post.countDocuments();
         const flaggedPosts = await Post.countDocuments({ status: "flagged" });
+        const underReview = await Post.countDocuments({
+            openReportCount: { $gt: 0 },
+            status: { $ne: "flagged" }
+        });
         const flaggedUsers = await User.countDocuments({ isFlagged: true });
         const openReports = await Report.countDocuments({ status: "open" });
 
         res.status(200).json({
             totalUsers,
             totalPosts,
+            flaggedPosts,
+            underReview,
             openReports,
             pendingReports: flaggedPosts + flaggedUsers + openReports,
-            activeDiscussions: await Post.countDocuments({ status: { $ne: "flagged" } })
+            activeDiscussions: await Post.countDocuments({
+                status: { $ne: "flagged" },
+                $or: [{ openReportCount: 0 }, { openReportCount: { $exists: false } }]
+            })
         });
     } catch (error) {
         console.error("Admin stats error:", error.message);
@@ -75,7 +105,11 @@ router.get("/posts", async (req, res) => {
         const { limit, page, skip } = readPaging(req.query);
 
         const [posts, total] = await Promise.all([
-            Post.find().sort({ createdAt: -1 }).skip(skip).limit(limit),
+            Post.find()
+                .select("-comments")
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limit),
             Post.countDocuments()
         ]);
 
@@ -88,14 +122,22 @@ router.get("/posts", async (req, res) => {
 
 // ==========================================
 // GET /api/admin/announcements
-// Get all announcements for management
+// Announcements for management, paginated so a long history cannot
+// overwhelm the tab.
 // ==========================================
 router.get("/announcements", async (req, res) => {
     try {
-        const announcements = await Announcement.find()
-            .sort({ createdAt: -1 });
+        const { limit, page, skip } = readPaging(req.query);
 
-        res.status(200).json(announcements);
+        const [announcements, total] = await Promise.all([
+            Announcement.find()
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limit),
+            Announcement.countDocuments()
+        ]);
+
+        res.status(200).json({ announcements, total, page, limit });
     } catch (error) {
         console.error("Admin announcements error:", error.message);
         res.status(500).json({
@@ -178,6 +220,104 @@ router.delete("/announcements/:id", async (req, res) => {
 });
 
 // ==========================================
+// GET /api/admin/moderators
+// The staff roster: every admin and moderator account.
+// ==========================================
+router.get("/moderators", async (req, res) => {
+    try {
+        const moderators = await User.find({ role: { $in: ["admin", "moderator"] } })
+            .select("name email universityRegNo role isFlagged createdAt")
+            .sort({ role: 1, createdAt: -1 });
+
+        res.status(200).json({ moderators });
+    } catch (error) {
+        console.error("Admin moderators error:", error.message);
+        res.status(500).json({ message: "Failed to fetch moderators." });
+    }
+});
+
+// ==========================================
+// PATCH /api/admin/users/:id/role
+// Promote a student to moderator, or demote a moderator back to student.
+// Admin accounts are immutable through this endpoint.
+// ==========================================
+router.patch("/users/:id/role", async (req, res) => {
+    try {
+        const { role } = req.body;
+
+        if (!["student", "moderator"].includes(role)) {
+            return res.status(400).json({
+                message: "Role must be student or moderator."
+            });
+        }
+
+        const user = await User.findById(req.params.id);
+
+        if (!user) {
+            return res.status(404).json({ message: "User not found." });
+        }
+
+        if (user.role === "admin") {
+            return res.status(400).json({
+                message: "Admin accounts cannot change role from here."
+            });
+        }
+
+        if (String(user._id) === String(req.user._id)) {
+            return res.status(400).json({
+                message: "You cannot change your own role."
+            });
+        }
+
+        if (user.role === role) {
+            return res.status(400).json({
+                message: `That account is already ${role}.`
+            });
+        }
+
+        const previousRole = user.role;
+        user.role = role;
+        await user.save();
+
+        await AuditLog.record({
+            action: "user.role_changed",
+            actor: req.user,
+            target: { type: "user", id: user._id, label: displayId(user) },
+            details: { name: user.name, from: previousRole, to: role },
+            req
+        });
+
+        await Notification.notify({
+            recipientEmail: identityOf(user),
+            type: "system",
+            title:
+                role === "moderator"
+                    ? "You are now a moderator"
+                    : "Your moderator access was removed",
+            message:
+                role === "moderator"
+                    ? "You can now help moderate discussions from the admin panel."
+                    : "Your account has been returned to student access.",
+            link: role === "moderator" ? "admin.html" : "index.html"
+        });
+
+        res.status(200).json({
+            message: `${user.name} is now ${role}.`,
+            user: {
+                id: user._id,
+                name: user.name,
+                email: user.email,
+                universityRegNo: user.universityRegNo,
+                role: user.role
+            }
+        });
+    } catch (error) {
+        console.error("Admin change role error:", error.message);
+        res.status(500).json({ message: "Failed to update role." });
+    }
+});
+
+// ==========================================
 // DELETE /api/admin/posts/:id
 // Permanently delete a post
 // ==========================================
@@ -186,13 +326,17 @@ router.delete("/posts/:id", async (req, res) => {
         const deletedPost = await Post.findByIdAndDelete(req.params.id);
 
         if (!deletedPost) {
-            return res.status(404).json({ message: "Post not found." });
+            return res.status(404).json({ message: "This discussion no longer exists." });
         }
 
         await User.updateMany(
             { savedPosts: req.params.id },
             { $pull: { savedPosts: req.params.id } }
         );
+
+        if (deletedPost.attachment && deletedPost.attachment.filename) {
+            removeUpload(deletedPost.attachment.filename);
+        }
 
         await AuditLog.record({
             action: "post.deleted",
@@ -202,7 +346,17 @@ router.delete("/posts/:id", async (req, res) => {
             req
         });
 
-        res.status(200).json({ message: "Post deleted successfully." });
+        if (deletedPost.authorEmail) {
+            await Notification.notify({
+                recipientEmail: deletedPost.authorEmail,
+                type: "post_deleted",
+                title: "Your discussion was removed",
+                message: `“${deletedPost.title.slice(0, 80)}” was removed by a moderator.`,
+                link: "index.html?view=myposts"
+            });
+        }
+
+        res.status(200).json({ message: "Discussion deleted successfully." });
     } catch (error) {
         console.error("Admin delete post error:", error.message);
         res.status(500).json({ message: "Failed to delete post." });
@@ -224,11 +378,7 @@ router.patch("/posts/:id/status", async (req, res) => {
         const post = await Post.findById(req.params.id);
 
         if (!post) {
-            return res.status(404).json({ message: "Post not found." });
-        }
-
-        if (!["active", "flagged", "approved"].includes(status)) {
-            return res.status(400).json({ message: "Invalid status value." });
+            return res.status(404).json({ message: "This discussion no longer exists." });
         }
 
         const previousStatus = post.status;
@@ -243,6 +393,26 @@ router.patch("/posts/:id/status", async (req, res) => {
             req
         });
 
+        if (post.authorEmail && previousStatus !== status) {
+            if (status === "flagged") {
+                await Notification.notify({
+                    recipientEmail: post.authorEmail,
+                    type: "post_flagged",
+                    title: "Your discussion was flagged",
+                    message: `“${post.title.slice(0, 80)}” is hidden from the feed while a moderator reviews it.`,
+                    link: "index.html?view=myposts"
+                });
+            } else if (previousStatus === "flagged") {
+                await Notification.notify({
+                    recipientEmail: post.authorEmail,
+                    type: "post_restored",
+                    title: "Your discussion is visible again",
+                    message: `“${post.title.slice(0, 80)}” has been restored to the discussion feed.`,
+                    link: `post.html?id=${post._id}`
+                });
+            }
+        }
+
         res.status(200).json({ message: `Post status set to ${status}.`, post });
     } catch (error) {
         console.error("Admin post status error:", error.message);
@@ -252,19 +422,22 @@ router.patch("/posts/:id/status", async (req, res) => {
 
 // ==========================================
 // GET /api/admin/users
-// Get all users (paginated)
+// Get all users (paginated). Staff accounts are listed separately on the
+// Moderators tab, so this feed stays student-only.
 // ==========================================
 router.get("/users", async (req, res) => {
     try {
         const { limit, page, skip } = readPaging(req.query);
 
+        const query = { role: "student" };
+
         const [users, total] = await Promise.all([
-            User.find()
+            User.find(query)
                 .select("-password")
                 .sort({ createdAt: -1 })
                 .skip(skip)
                 .limit(limit),
-            User.countDocuments()
+            User.countDocuments(query)
         ]);
 
         res.status(200).json({ users, total, page, limit });
@@ -286,10 +459,10 @@ router.patch("/users/:id/flag", async (req, res) => {
             return res.status(404).json({ message: "User not found." });
         }
 
-        // Never let an admin lock themselves (or another admin) out of the panel
-        if (user.role === "admin") {
+        // Never let an admin lock staff accounts out of the panel
+        if (user.role !== "student") {
             return res.status(400).json({
-                message: "Admin accounts cannot be flagged."
+                message: "Staff accounts cannot be flagged."
             });
         }
 
@@ -302,6 +475,18 @@ router.patch("/users/:id/flag", async (req, res) => {
             target: { type: "user", id: user._id, label: displayId(user) },
             details: { name: user.name, isFlagged: user.isFlagged },
             req
+        });
+
+        await Notification.notify({
+            recipientEmail: identityOf(user),
+            type: "system",
+            title: user.isFlagged
+                ? "Your account has been suspended"
+                : "Your account has been reinstated",
+            message: user.isFlagged
+                ? "You cannot post, comment or like while the suspension is active."
+                : "You can post, comment and like again.",
+            link: "index.html"
         });
 
         res.status(200).json({
@@ -332,16 +517,14 @@ router.delete("/users/:id", async (req, res) => {
             return res.status(404).json({ message: "User not found." });
         }
 
-        // Same guard as flagging: admins are never removable from the panel.
-        if (user.role === "admin") {
+        // Same guard as flagging: staff accounts are never removable here.
+        if (user.role !== "student") {
             return res.status(400).json({
-                message: "Admin accounts cannot be deleted."
+                message: "Staff accounts cannot be deleted."
             });
         }
 
-        // Defence in depth: an admin targeting their own id is already caught
-        // by the role guard above, but never let a request delete the session
-        // that is making it.
+        // Defence in depth: never let a request delete the session making it.
         if (String(user._id) === String(req.user._id)) {
             return res.status(400).json({
                 message: "You cannot delete your own account."
@@ -364,9 +547,15 @@ router.delete("/users/:id", async (req, res) => {
         // one would match the empty-string default on other people's content.
         if (identity) {
             // Authored posts, and the savedPosts entries pointing at them.
-            const authored = await Post.find({ authorEmail: identity }).select("_id");
+            const authored = await Post.find({ authorEmail: identity });
             const postIds = authored.map((post) => post._id);
             deletedPosts = postIds.length;
+
+            for (const post of authored) {
+                if (post.attachment && post.attachment.filename) {
+                    removeUpload(post.attachment.filename);
+                }
+            }
 
             if (postIds.length > 0) {
                 await Post.deleteMany({ _id: { $in: postIds } });
@@ -377,12 +566,34 @@ router.delete("/users/:id", async (req, res) => {
                 );
             }
 
-            // Comments the user left on other people's posts.
+            // Comments the user left on other people's posts. Snapshot the
+            // affected post ids first, because the $pull below erases the
+            // queryable evidence, then recompute commentCount per post
+            // (updateMany bypasses the pre-save hook).
+            const postsWithComments = await Post.find({
+                "comments.authorEmail": identity
+            }).select("_id");
+
             const commentResult = await Post.updateMany(
                 { "comments.authorEmail": identity },
                 { $pull: { comments: { authorEmail: identity } } }
             );
             removedComments = commentResult.modifiedCount || 0;
+
+            if (postsWithComments.length > 0) {
+                const refreshed = await Post.find({
+                    _id: { $in: postsWithComments.map((post) => post._id) }
+                }).select("comments");
+
+                await Promise.all(
+                    refreshed.map((post) =>
+                        Post.updateOne(
+                            { _id: post._id },
+                            { $set: { commentCount: post.comments.length } }
+                        )
+                    )
+                );
+            }
 
             // Likes given by the user. updateMany skips the pre-save hook, so
             // the denormalised `likes` counter is recomputed from `likedBy`.
@@ -443,7 +654,7 @@ router.get("/reports", async (req, res) => {
     try {
         const { limit, page, skip } = readPaging(req.query);
 
-        const query = {};
+        const query = { status: "open" };
 
         if (req.query.status && req.query.status !== "all") {
             if (!Report.REPORT_STATUSES.includes(req.query.status)) {
@@ -473,7 +684,8 @@ router.get("/reports", async (req, res) => {
 
 // ==========================================
 // PATCH /api/admin/reports/:id
-// Resolve or dismiss a report.
+// Resolve or dismiss a report. Both outcomes un-hide the post once its last
+// open report is cleared, and notify the reporter.
 // ==========================================
 router.patch("/reports/:id", async (req, res) => {
     try {
@@ -510,6 +722,19 @@ router.patch("/reports/:id", async (req, res) => {
 
         await report.save();
 
+        // Un-hide the post if this was its last open report.
+        const remainingOpen = await Report.countDocuments({
+            post: report.post,
+            status: "open"
+        });
+
+        if (remainingOpen === 0) {
+            await Post.updateOne(
+                { _id: report.post, openReportCount: { $gt: 0 } },
+                { $set: { openReportCount: 0 } }
+            );
+        }
+
         await AuditLog.record({
             action: status === "resolved" ? "report.resolved" : "report.dismissed",
             actor: req.user,
@@ -517,10 +742,24 @@ router.patch("/reports/:id", async (req, res) => {
             details: {
                 reason: report.reason,
                 resolutionAction: cleanAction,
-                note: cleanNote
+                note: cleanNote,
+                remainingOpen
             },
             req
         });
+
+        if (report.reporter && report.reporter.email) {
+            await Notification.notify({
+                recipientEmail: report.reporter.email,
+                type: status === "resolved" ? "report_resolved" : "report_dismissed",
+                title:
+                    status === "resolved"
+                        ? "Your report was resolved"
+                        : "Your report was dismissed",
+                message: `Your report on “${report.postSnapshot.title.slice(0, 80)}” has been ${status}.`,
+                link: "index.html"
+            });
+        }
 
         res.status(200).json({ message: `Report ${status}.`, report });
 

@@ -178,6 +178,23 @@
                 </span>
             </button>
 
+            <div class="notification-menu-container">
+                <button class="icon-btn" id="notification-btn" type="button" aria-label="Notifications"
+                    title="Notifications">
+                    <svg class="icon" aria-hidden="true"><use href="#i-inbox"></use></svg>
+                    <span class="notification-badge is-hidden" id="notification-badge">0</span>
+                </button>
+                <div class="notification-dropdown" id="notification-dropdown" role="menu">
+                    <div class="notification-header">
+                        <strong>Notifications</strong>
+                        <button id="mark-all-read" type="button">Mark all read</button>
+                    </div>
+                    <div class="notification-list" id="notification-list">
+                        <p class="notification-empty">No notifications yet.</p>
+                    </div>
+                </div>
+            </div>
+
             <div class="profile-menu-container">
                 <button class="profile-avatar-btn" id="profile-btn" type="button" aria-label="User Profile"
                     title="Profile">
@@ -220,10 +237,6 @@
                         stay updated with department announcements.
                     </p>
                     <div class="hero-buttons">
-                        <button class="btn-hero-primary" id="hero-create-btn" type="button">
-                            <svg class="icon" aria-hidden="true"><use href="#i-plus"></use></svg>
-                            Create Post
-                        </button>
                         <button class="btn-hero-secondary" id="hero-explore-btn" type="button">
                             Explore Discussions
                             <svg class="icon" aria-hidden="true"><use href="#i-compass"></use></svg>
@@ -348,13 +361,6 @@
                     </div>
                 </div>
 
-                <!-- Quick Post Trigger Bar -->
-                <div class="quick-post-bar" id="quick-post-trigger" role="button" tabindex="0"
-                    aria-label="Create a new post">
-                    <div class="user-quick-avatar" id="quick-avatar">S</div>
-                    <div class="quick-post-input">Share something with your department...</div>
-                </div>
-
                 <!-- POSTS FEED CONTAINER -->
                 <div id="posts-container" role="feed" aria-label="Community posts">
                     <!-- Skeletons render here initially -->
@@ -446,6 +452,12 @@
                             required></textarea>
                     </div>
 
+                    <div class="form-group">
+                        <label for="post-file">Attachment (optional)</label>
+                        <input type="file" id="post-file" name="attachment">
+                        <p class="form-hint">Any file up to 5 MB. Images show a preview on the post.</p>
+                    </div>
+
                     <div class="form-actions">
                         <button type="button" id="cancel-post" class="btn-cancel">Cancel</button>
                         <button type="submit" class="btn-publish" id="publish-btn">Publish Post</button>
@@ -501,6 +513,24 @@
                         <button type="submit" class="btn-publish" id="submit-report-btn">Submit Report</button>
                     </div>
                 </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= CONFIRM MODAL ================= -->
+    <div class="modal-overlay" id="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
+        <div class="modal-card confirm-card">
+            <div class="modal-header">
+                <h3 id="confirm-title">Are you sure?</h3>
+                <button id="close-confirm-modal" class="modal-close-btn" type="button"
+                    aria-label="Close confirm dialog">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p id="confirm-message">This action cannot be undone.</p>
+                <div class="form-actions">
+                    <button type="button" id="confirm-cancel" class="btn-cancel">Cancel</button>
+                    <button type="button" id="confirm-ok" class="btn-danger">Confirm</button>
+                </div>
             </div>
         </div>
     </div>
