@@ -718,7 +718,8 @@ async function loadTopDiscussions() {
         }
 
         trendingList.innerHTML = discussions.map((discussion, index) => `
-            <a class="trending-item" href="post.html?id=${encodeURIComponent(discussion._id)}">
+            <a class="trending-item" href="post.html?id=${encodeURIComponent(discussion._id)}"
+                title="${escapeHTML(discussion.title)} — open the full discussion">
                 <span class="trending-rank">${String(index + 1).padStart(2, "0")}</span>
                 <div class="trending-details">
                     <h4>${escapeHTML(discussion.title)}</h4>
@@ -773,7 +774,8 @@ async function loadAnnouncements() {
 }
 
 // Widget polling: keeps trending, announcements and hero stats fresh without
-// a full feed reload. Started once the first load has finished.
+// a full feed reload. Trending is polled every 20 s so the ranking moves in
+// near real time; started once the first load has finished.
 let widgetPollTimer = null;
 
 function startWidgetPolling() {
@@ -782,7 +784,7 @@ function startWidgetPolling() {
     widgetPollTimer = window.setInterval(() => {
         loadTopDiscussions();
         loadCommunityStats();
-    }, 60000);
+    }, 20000);
 }
 
 // =====================================================

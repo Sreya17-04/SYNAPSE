@@ -500,6 +500,14 @@
   border-color: rgba(16, 185, 129, 0.3);
 }
 
+/* Unflag returns a flagged post to the feed - same "safe" palette as the
+   green action, but never labelled as an approval step. */
+.btn-unflag {
+  background: rgba(16, 185, 129, 0.15);
+  color: #047857;
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
 .btn-flag {
   background: rgba(245, 158, 11, 0.16);
   color: #b45309;
@@ -543,6 +551,7 @@ body.dark-mode .badge-status.flagged { background: rgba(239, 68, 68, 0.18); colo
 body.dark-mode .badge-status.dismissed { background: rgba(148, 163, 184, 0.18); color: var(--text-secondary); }
 
 body.dark-mode .btn-approve { background: rgba(16, 185, 129, 0.18); color: #6ee7b7; border-color: rgba(16, 185, 129, 0.35); }
+body.dark-mode .btn-unflag { background: rgba(16, 185, 129, 0.18); color: #6ee7b7; border-color: rgba(16, 185, 129, 0.35); }
 body.dark-mode .btn-flag { background: rgba(245, 158, 11, 0.18); color: #fcd34d; border-color: rgba(245, 158, 11, 0.35); }
 body.dark-mode .btn-delete { background: rgba(239, 68, 68, 0.18); color: #fca5a5; border-color: rgba(239, 68, 68, 0.35); }
 

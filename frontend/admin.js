@@ -1574,11 +1574,11 @@ function renderPostsTable(searchTerm = "") {
                         ${status === "flagged"
                 ? `
                             <button
-                                class="btn-table-action btn-approve"
+                                class="btn-table-action btn-unflag"
                                 data-id="${post._id}"
                                 data-target-status="active"
                                 type="button">
-                                Restore
+                                Unflag
                             </button>
                         `
                 : `
@@ -2013,11 +2013,11 @@ function renderFlaggedTable() {
                     <td>
 
                         <button
-                            class="btn-table-action btn-approve"
+                            class="btn-table-action btn-unflag"
                             data-id="${post._id}"
                             data-target-status="active"
                             type="button">
-                            Restore
+                            Unflag
                         </button>
 
                         <button
@@ -2477,8 +2477,8 @@ function attachTableActions(container) {
 
         });
 
-    // FLAG / RESTORE - the button carries the target status, so flagged rows
-    // offer "Restore" (back to active) instead of a second flag.
+    // FLAG / UNFLAG - the button carries the target status, so flagged rows
+    // offer "Unflag" (back to active) instead of a second flag.
     container
         .querySelectorAll("[data-target-status]")
         .forEach((button) => {
@@ -2563,10 +2563,8 @@ async function updatePostStatus(
 
         showToast(
             status === "flagged"
-                ? "Post flagged successfully."
-                : status === "active"
-                    ? "Post restored to the feed."
-                    : "Post approved successfully.",
+                ? "Post flagged. It is hidden from the discussion feed."
+                : "Post unflagged. It is visible in the feed again.",
             "success"
         );
 
@@ -2748,10 +2746,10 @@ function openPostModal(post) {
             <div class="action-row">
 
                 <button
-                    class="btn-table-action ${post.status === "flagged" ? "btn-approve" : "btn-flag"}"
+                    class="btn-table-action ${post.status === "flagged" ? "btn-unflag" : "btn-flag"}"
                     id="modal-flag-btn"
                     type="button">
-                    ${post.status === "flagged" ? "Restore" : "Flag"}
+                    ${post.status === "flagged" ? "Unflag" : "Flag"}
                 </button>
 
                 <button
